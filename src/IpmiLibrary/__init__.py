@@ -203,6 +203,22 @@ class IpmiLibrary:
         if len(records) != 0:
             raise AssertionError('SEL contains sensor type %s' % type)
 
+    def wait_until_sel_contains_x_times_sensor_type(self, count, type):
+        type = self._find_sensor_type(type)
+
+        start_time = time.time()
+        while time.time() < start_time + self._timeout:
+            self.fetch_sel()
+            records = self._find_sel_records_by_sensor_type(type)
+            if len(records) >= count:
+                self._selected_sel_record = records[0]
+                return
+            time.sleep(self._poll_interval)
+
+        raise AssertionError('No match found for SEL record type "%s" in %s.'
+                % (type, utils.secs_to_timestr(self._timeout)))
+
+
     def wait_until_sel_contains_sensor_type(self, type):
         """Wait until the SEL contains at least one record with the given
         sensor type.
@@ -220,20 +236,7 @@ class IpmiLibrary:
         | Wait Until SEL Contains Sensor Type | 0x23 |
         | Wait Until SEL Contains Sensor Type | Voltage |
         """
-
-        type = self._find_sensor_type(type)
-
-        start_time = time.time()
-        while time.time() < start_time + self._timeout:
-            self.fetch_sel()
-            records = self._find_sel_records_by_sensor_type(type)
-            if len(records) > 0:
-                self._selected_sel_record = records[0]
-                return
-            time.sleep(self._poll_interval)
-
-        raise AssertionError('No match found for SEL record type "%s" in %s.'
-                % (type, utils.secs_to_timestr(self._timeout)))
+        self.wait_until_sel_contains_x_times_sensor_type(1, type)
 
     def select_sel_record_by_sensor_type(self, type, index=1):
         """Selects a SEL record.
