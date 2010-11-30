@@ -299,6 +299,15 @@ class IpmiLibrary:
         asserts.fail_unless_equal(expected_value,
                 self._selected_sel_record.event_data, msg)
 
+    def _find_event_direction(self, direction):
+        return find_attribute(SelRecord, direction, 'EVENT_')
+
+    def selected_sel_records_event_direction_should_be(self,
+            expected_direction, msg=None):
+        direction = self._find_event_direction(expected_direction)
+        asserts.fail_unless_equal(direction,
+                self._selected_sel_record.event_direction, msg)
+
     def _get_sensor_list(self):
         output = self._run_ipmitool_checked('sensor list')
         sensor_list = []
