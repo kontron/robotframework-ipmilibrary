@@ -46,7 +46,7 @@ class IpmiLibrary:
         user = str(user)
         password = str(password)
 
-        if brdige_channel:
+        if bridge_channel:
             bridge_channel = int(bridge_channel, 0)
         if double_bridge_target_address:
             double_bridge_target_address = int(double_bridge_target_address, 0)
@@ -79,12 +79,17 @@ class IpmiLibrary:
         cmd = self.IPMITOOL
         cmd += (' -I lan')
         cmd += (' -H %s' % self._active_connection.host)
+
         if self._active_connection.bridge_channel:
             cmd += (' -b %d' % self._active_connection.bridge_channel)
-        cmd += (' -t 0x%02x' % self._active_connection.target_address)
+
         if self._active_connection.double_bridge_target_address:
-            cmd += (' -T 0x%02x' %
+            cmd += (' -t 0x%02x' %
                     self._active_connection.double_bridge_target_address)
+            cmd += (' -T 0x%02x' % self._active_connection.target_address)
+        else:
+            cmd += (' -t 0x%02x' % self._active_connection.target_address)
+
         cmd += (' -U %s' % self._active_connection.user)
         cmd += (' -P %s' % self._active_connection.password)
         cmd += (' %s 2>&1' % ipmi_cmd)
