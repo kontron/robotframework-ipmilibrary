@@ -45,9 +45,11 @@ class IpmiLibrary:
         target_address = int(target_address, 0)
         user = str(user)
         password = str(password)
-        bridge_channel = int(bridge_channel, 0)
-        double_bridge_target_address = int(double_bridge_target_address, 0)
 
+        if brdige_channel:
+            bridge_channel = int(bridge_channel, 0)
+        if double_bridge_target_address:
+            double_bridge_target_address = int(double_bridge_target_address, 0)
         if alias:
             alias = str(alias)
 
