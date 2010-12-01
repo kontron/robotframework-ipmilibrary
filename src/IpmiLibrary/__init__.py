@@ -13,11 +13,14 @@ from utils import find_attribute
 from robot.utils.connectioncache import ConnectionCache
 
 class IpmiConnection:
-    def __init__(self, host, target_address, user, password):
+    def __init__(self, host, target_address, user, password,
+            bridge_channel, double_bridge_target_address):
         self.host = host
         self.target_address = target_address
         self.user = user
         self.password = password
+        self.bridge_channel = bridge_channel;
+        self.double_bridge_target_address = double_bridge_target_address
 
 class IpmiLibrary:
     IPMITOOL = 'ipmitool'
@@ -29,7 +32,8 @@ class IpmiLibrary:
         self.set_poll_interval(timeout)
         self._cache = ConnectionCache()
 
-    def open_ipmi_connection(self, host, target_address, user='', password='', alias=None):
+    def open_ipmi_connection(self, host, target_address, user='', password='',
+            bridge_channel=None, double_bridge_target_address=None, alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
  
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -48,7 +52,8 @@ class IpmiLibrary:
         self._info('Opening IPMI connection to %s:0x%02x' % (host,
             target_address))
 
-        conn = IpmiConnection(host, target_address, user, password)
+        conn = IpmiConnection(host, target_address, user, password,
+                bridge_channel, double_bridge_target_address)
         self._active_connection = conn
 
         return self._cache.register(conn, alias)
@@ -66,11 +71,20 @@ class IpmiLibrary:
         self._active_connection = self._cache.switch(index_or_alias)
         return old_index
 
-    def _run_ipmitool(self, cmd):
-        cmd = "%s -I lan -H %s -U %s -P %s -t 0x%02x %s 2>&1" % (
-                self.IPMITOOL, self._active_connection.host,
-                self._active_connection.user, self._active_connection.password,
-                self._active_connection.target_address, cmd)
+    def _run_ipmitool(self, ipmi_cmd):
+        cmd = self.IPMITOOL
+        cmd += (' -I lan')
+        cmd += (' -H %s' % self._active_connection.host)
+        if self._active_connection.bridge_channel:
+            cmd += (' -b %d' % self._active_connection.bridge_channel)
+        cmd += (' -t 0x%02x' % self._active_connection.target_address)
+        if self._active_connection.double_bridge_target_address:
+            cmd += (' -T 0x%02x' %
+                    self._active_connection.double_bridge_target_address)
+        cmd += (' -U %s' % self._active_connection.user)
+        cmd += (' -P %s' % self._active_connection.password)
+        cmd += (' %s 2>&1' % ipmi_cmd)
+
         self._info('Running command "%s"' % cmd)
         child = Popen(cmd, shell=True, stdout=PIPE)
         output = child.communicate()[0]
