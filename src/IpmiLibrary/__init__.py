@@ -229,6 +229,8 @@ class IpmiLibrary:
     def wait_until_sel_contains_x_times_sensor_type(self, count, type):
         type = self._find_sensor_type(type)
 
+        count = int(count)
+
         start_time = time.time()
         while time.time() < start_time + self._timeout:
             self.fetch_sel()
@@ -319,11 +321,11 @@ class IpmiLibrary:
 
         # apply mask
         expected_value = expected_value & mask
+        value = self._selected_sel_record.event_data & mask
 
         if not self._selected_sel_record:
             raise RuntimeError('No SEL record selected.')
-        asserts.fail_unless_equal(expected_value,
-                self._selected_sel_record.event_data, msg)
+        asserts.fail_unless_equal(expected_value, value, msg)
 
     def _find_event_direction(self, direction):
         return find_attribute(SelRecord, direction, 'EVENT_')
