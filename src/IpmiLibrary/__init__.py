@@ -444,6 +444,19 @@ class IpmiLibrary:
         raise AssertionError('Sensor "%s" did not reach the value "%s" in %s.'
                 % (name, state, utils.secs_to_timestr(self._timeout)))
 
+    def set_sensor_threshold(self, name, threshold, value):
+        """Set specified threshold of sensor to value
+        
+        Example:
+
+        """
+        name = str(name)
+        threshold = str(threshold)
+        value = int(value)
+        
+        self._run_ipmitool_checked('sensor thresh "%s" "%s" %d' % (name, threshold, value) )
+
+
     def _warn(self, msg):
         self._log(msg, 'WARN')
 
