@@ -160,7 +160,7 @@ class IpmiLibrary:
 
         For more details see `Set Timeout`.
         """
-        old = getattr(self, '_poll_interval', 3.0)
+        old = getattr(self, '_poll_interval', 1.0)
         self._poll_interval = utils.timestr_to_secs(poll_interval)
         return utils.secs_to_timestr(old)
 
@@ -345,8 +345,14 @@ class IpmiLibrary:
                 continue
 
             data = line.split('|', 10)
+            # skip not matching line
+            if len(data) != 10:
+                continue
+
             name = data[0].strip()
             type = data[2].strip()
+
+
             if (type == 'discrete'):
                 try:
                     value = int(data[1].strip(), 16)
