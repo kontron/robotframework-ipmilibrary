@@ -90,8 +90,8 @@ class IpmiLibrary:
         else:
             cmd += (' -t 0x%02x' % self._active_connection.target_address)
 
-        cmd += (' -U %s' % self._active_connection.user)
-        cmd += (' -P %s' % self._active_connection.password)
+        cmd += (' -U "%s"' % self._active_connection.user)
+        cmd += (' -P "%s"' % self._active_connection.password)
         cmd += (' %s 2>&1' % ipmi_cmd)
 
         self._info('Running command "%s"' % cmd)
