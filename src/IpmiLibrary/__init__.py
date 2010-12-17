@@ -9,7 +9,7 @@ from sel import SelRecord
 from subprocess import Popen, PIPE
 from robot import utils
 from robot.utils import asserts
-from utils import find_attribute
+from utils import find_attribute, int_any_base
 from robot.utils.connectioncache import ConnectionCache
 
 class IpmiConnection:
@@ -21,6 +21,10 @@ class IpmiConnection:
         self.password = password
         self.bridge_channel = bridge_channel;
         self.double_bridge_target_address = double_bridge_target_address
+
+    def close(self):
+        # connectioncache calls this function
+        pass
 
 class IpmiLibrary:
     IPMITOOL = 'ipmitool'
@@ -42,14 +46,14 @@ class IpmiLibrary:
         """
 
         host = str(host)
-        target_address = int(target_address, 0)
+        target_address = int_any_base(target_address)
         user = str(user)
         password = str(password)
 
         if bridge_channel:
-            bridge_channel = int(bridge_channel, 0)
+            bridge_channel = int_any_base(bridge_channel)
         if double_bridge_target_address:
-            double_bridge_target_address = int(double_bridge_target_address, 0)
+            double_bridge_target_address = int_any_base(double_bridge_target_address)
         if alias:
             alias = str(alias)
 
@@ -74,6 +78,22 @@ class IpmiLibrary:
         old_index = self._cache.current_index
         self._active_connection = self._cache.switch(index_or_alias)
         return old_index
+
+    def close_all_ipmi_connections(self):
+        """Closes all open connections and empties the connection cache.
+
+        After this keyword, new indexes got from the `Open Connection`
+        keyword are reset to 1.
+
+        This keyword should be used in a test or suite teardown to
+        make sure all connections are closed.
+        """
+        self._active_connection = self._cache.close_all()
+
+    def close_ipmi_connection(self, loglevel=None):
+        """Closes the current connection.
+        """
+        self._active_connection.close()
 
     def _run_ipmitool(self, ipmi_cmd):
         cmd = self.IPMITOOL
@@ -315,9 +335,8 @@ class IpmiLibrary:
         | Selected SEL Records Event Data Should Be Equal | 0x010000 | 0x0f0000 |
         """
 
-        expected_value = int(expected_value, 0)
-        if not isinstance(mask, int):
-            mask = int(mask, 0)
+        expected_value = int_any_base(expected_value)
+        mask = int_any_base(mask)
 
         # apply mask
         expected_value = expected_value & mask
@@ -400,22 +419,22 @@ class IpmiLibrary:
             raise RuntimeError('No sensor found with name "%s"', name)
         return sensor[2]
 
-    def sensor_value_should_be(self, name, expected_value):
-        expected_value = int(expected_value, 0)
+    def sensor_value_should_be(self, name, expected_value, msg=None):
+        expected_value = int_any_base(expected_value)
         current_value = self.get_sensor_value(name)
-        asserts.fail_unless_equal(expected_value, current_value)
+        asserts.fail_unless_equal(expected_value, current_value, msg)
 
-    def sensor_state_should_be(self, name, expected_state):
-        expected_state = int(expected_state, 0)
+    def sensor_state_should_be(self, name, expected_state, msg=None):
+        expected_state = int_any_base(expected_state)
         current_state = self.get_sensor_state(name)
-        asserts.fail_unless_equal(expected_state, current_state)
+        asserts.fail_unless_equal(expected_state, current_state, msg)
 
     def wait_until_sensor_state_is(self, name, state):
         """Wait until a sensor reaches the given state.
         """
         
         name = str(name)
-        state = int(state, 0)
+        state = int_any_base(state)
 
         start_time = time.time()
         while time.time() < start_time + self._timeout:
@@ -432,7 +451,7 @@ class IpmiLibrary:
         """
         
         name = str(name)
-        state = int(state, 0)
+        state = int_any_base(state)
 
         start_time = time.time()
         while time.time() < start_time + self._timeout:
