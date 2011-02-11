@@ -6,6 +6,7 @@
 
 import time
 from sel import SelRecord
+from picmg import Picmg
 from subprocess import Popen, PIPE
 from robot import utils
 from robot.utils import asserts
@@ -186,10 +187,21 @@ class IpmiLibrary:
         fruid = int(fruid)
         self._run_ipmitool_checked('picmg frucontrol %d 0' % fruid)
 
+    def issue_frucontrol_diagnostic_interrupt(self, fruid=0):
+        """Sends a _frucontrol diagnostic interrupt_ to the given FRU.
+        """
+        fruid = int(fruid)
+        self._run_ipmitool_checked('picmg frucontrol %d 3' % fruid)
+
     def issue_chassis_power_cycle(self):
         """Sends a _chassis power cycle_.
         """
         self._run_ipmitool_checked('chassis power cycle')
+
+    def issue_chassis_power_reset(self):
+        """Sends a _chassis power reset_.
+        """
+        self._run_ipmitool_checked('chassis power reset')
 
     def set_timeout(self, timeout):
         """Sets the timeout used in `Wait Until X` keywords to the given value.
@@ -514,6 +526,103 @@ class IpmiLibrary:
         
         self._run_ipmitool_checked('sensor thresh "%s" "%s" %d' % (name, threshold, value) )
 
+
+    def _find_picmg_interface_type(self, type):
+        return find_attribute(Picmg, type, 'PICMG_LINK_INTERFACE')
+
+    def _find_picmg_link_type(self, type):
+        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE')
+
+    def _find_picmg_link_type_extension(self, type):
+        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE_EXT')
+
+    def _find_picmg_link_flags(self, flags):
+        return find_attribute(Picmg, flags, 'PICMG_LINK_FLAGS')
+
+    def _find_picmg_link_state(self, state):
+        return find_attribute(Picmg, state, 'PICMG_LINK_STATE')
+
+    def set_port_state(self, interface, channel, flags, link_type,
+            link_type_ext, state):
+        """Send Picmg Set Portstate command
+        `interface` the interface type 
+        BASE, FABRIC, UPDATE_CHANNEL        
+
+        `channel` is the interface channel Id.
+
+        `flags` is the lane mask.
+        LANE0, LANE0123
+
+        `link_type` is one of the following:
+        BASE, ETHERNET_FABRIC, INFINIBAND_FABRIC, STARFABRIC_FABRIC,
+        PCIEXPRESS_FABRIC
+        
+        `link_type_ext` is one of the following:
+        BASE0, BASE1, ETHERNET_FIX1000BX, ETHERNET_FIX10GBX4, ETHERNET_FCPI,
+        ETHERNET_FIX1000KX_10GKR, ETHERNET_FIX10GKX4, ETHERNET_FIX40GKR4
+
+        `state` the link state.
+        ENABLE, DISABLE
+
+        Example:
+        | Set Port State | BASE | 1 | LANE0 | BASE | BASE0 | ENABLE
+        """
+        interface = self._find_picmg_interface_type(interface)
+        channel = int(channel)
+        flags = self._find_picmg_link_flags(flags)
+        link_type = self._find_picmg_link_type(link_type)
+        link_type_ext = self._find_picmg_link_type_extension(link_type_ext)
+        state = self._find_picmg_link_state(state)
+
+        cmd = 'picmg portstate set %d %d %d %d %d 0 %d' % \
+                (interface, channel, flags, link_type, link_type_ext, state)
+        self._run_ipmitool_checked(cmd)        
+
+    def _find_picmg_signaling_class(self, signaling_class):
+        return find_attribute(Picmg, signaling_class, 'PICMG_CHANNEL')
+
+    def set_signaling_class(self, interface, channel, signaling_class):
+        """Send `Set Channel Siganling Class` command
+        `interface` the interface type
+        BASE, FABRIC, UPDATE_CHANNEL
+
+        `channel` is the interface channel Id.
+
+        `class` is the channel signaling class capability
+        CLASS_BASIC, CLASS_10_3125GBD
+        """
+        
+        interface = self._find_picmg_interface_type(interface)
+        channel = int(channel)
+        signaling_class = self._find_picmg_signaling_class(signaling_class)
+        cmd = 'raw 0x2c 0x3b 0x00 %d %d' % \
+                ((interface & 3)<<6|(channel & 0x3F), signaling_class&0xf)
+        self._run_ipmitool_checked(cmd)
+
+    def get_signaling_class(self, interface, channel):
+        """Send `Get Channel Signaling Class` command
+        """
+        
+        interface = self._find_picmg_interface_tpye(interface)
+        cmd = 'raw 0x2c 0x3c 0x00 %02x' % ((interface & 3)<<6|(channel & 0x3F))
+        output = self._run_ipmitool_checked(cmd)
+
+    def start_watchdog_timer(self, countdown):
+        """Start IPMI watchdog timer.
+
+        The maximum countdown value is 6553 seconds.
+        """
+        countdown = utils.timestr_to_secs(countdown)
+        countdown = int(countdown * 10) # convert to 100ms steps 
+        if (countdown > 0xFFFF):
+            raise RuntimeError('Watchdog countdown out of range')        
+        countdown_lsb = countdown & 0xff
+        countdown_msb = (countdown >> 8)& 0xff
+        
+        cmd = 'raw 6 0x24 4 1 0 8 %d %d' % (countdown_lsb, countdown_msb)
+        self._run_ipmitool_checked(cmd)
+        cmd = 'raw 6 0x22'
+        self._run_ipmitool_checked(cmd)
 
     def _warn(self, msg):
         self._log(msg, 'WARN')
