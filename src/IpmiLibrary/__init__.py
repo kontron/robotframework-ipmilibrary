@@ -26,6 +26,9 @@ class IpmiConnection:
         # connectioncache calls this function
         pass
 
+class Timeout(Exception):
+    pass
+
 class IpmiLibrary:
     IPMITOOL = 'ipmitool'
 
@@ -35,6 +38,42 @@ class IpmiLibrary:
         self.set_timeout(timeout)
         self.set_poll_interval(timeout)
         self._cache = ConnectionCache()
+
+    def _rmcp_ping(self, host):
+        # for now this uses impitool..
+        cmd = self.IPMITOOL
+        cmd += (' -I lan')
+        cmd += (' -H %s' % host)
+        cmd += (' -A NONE')
+        cmd += (' session info all')
+
+        self._info('Running command "%s"' % cmd)
+        child = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
+        child.communicate()
+
+        self._trace('rc = %s' % child.returncode)
+        if child.returncode:
+            raise Timeout
+
+    def wait_until_rmcp_is_ready(self, host, timeout=45):
+        """Waits until the host can handle RMCP packets.
+
+        `timeout` is given in Robot Framework's time format
+        (e.g. 1 minute 20 seconds) that is explained in the User Guide.
+        """
+
+        timeout = utils.timestr_to_secs(timeout)
+
+        start_time = time.time()
+        while time.time() < start_time + timeout:
+            try:
+                self._rmcp_ping(host)
+                return
+            except Timeout:
+                pass
+
+        raise AssertionError('RMCP not ready in %s.'
+                % (utils.secs_to_timestr(timeout)))
 
     def open_ipmi_connection(self, host, target_address, user='', password='',
             bridge_channel=None, double_bridge_target_address=None, alias=None):
@@ -241,8 +280,8 @@ class IpmiLibrary:
         """Fails if SEL contains the given sensor type.
         """
 
-        type = self._find_sensor_type(self, type)
-        records = self._find_sel_records_by_sensor_type(self, type)
+        type = self._find_sensor_type(type)
+        records = self._find_sel_records_by_sensor_type(type)
         if len(records) != 0:
             raise AssertionError('SEL contains sensor type %s' % type)
 
