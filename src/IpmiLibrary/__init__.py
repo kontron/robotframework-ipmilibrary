@@ -38,7 +38,7 @@ class IpmiLibrary:
         self._sel_records = []
         self._selected_sel_record = None
         self.set_timeout(timeout)
-        self.set_poll_interval(timeout)
+        self.set_poll_interval(poll_interval)
         self._cache = ConnectionCache()
 
     def _rmcp_ping(self, host):
