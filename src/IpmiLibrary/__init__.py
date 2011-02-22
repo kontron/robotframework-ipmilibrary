@@ -7,6 +7,7 @@
 import time
 from sel import SelRecord
 from picmg import Picmg
+from watchdog import IpmiWatchdog
 from subprocess import Popen, PIPE
 from robot import utils
 from robot.utils import asserts
@@ -135,6 +136,16 @@ class IpmiLibrary:
         """
         self._active_connection.close()
 
+    def wait_until_connection_is_responsive(self):
+        
+        start_time = time.time()
+        while time.time() < start_time + self._timeout:
+            output, rc = self._run_ipmitool('bmc info')
+            if rc != 0:    
+                time.sleep(self._poll_interval)
+            else:
+                return
+        
     def _run_ipmitool(self, ipmi_cmd):
         cmd = self.IPMITOOL
         cmd += (' -I lan')
@@ -169,6 +180,16 @@ class IpmiLibrary:
             raise AssertionError('return code was %d' % rc)
         return output
 
+    def issue_bmc_cold_reset(self, fruid=0):
+        """Sends a _bmc cold reset_ to the given controler.
+        """
+        self._run_ipmitool_checked('raw 6 2')
+
+    def get_bmc_device_id(self):
+        """Sends a _bmc get device id_ command to the given controler.
+        """
+        self._run_ipmitool_checked('raw 6 1')
+
     def clear_activation_lock_bit(self, fruid=0):
         """Clears the activation lock bit for to the given FRU.
         """
@@ -192,6 +213,11 @@ class IpmiLibrary:
         """
         fruid = int(fruid)
         self._run_ipmitool_checked('picmg frucontrol %d 3' % fruid)
+
+    def issue_chassis_power_down(self):
+        """Sends a _chassis power down_ command.
+        """
+        self._run_ipmitool_checked('chassis power down')
 
     def issue_chassis_power_cycle(self):
         """Sends a _chassis power cycle_.
@@ -434,17 +460,31 @@ class IpmiLibrary:
                     state = ((state >> 8) & 0xff) | ((state << 16) & 0xff)
                 except ValueError:
                     state = None
+                thresholds = None
             else:
+                thresholds = {}
+                # get sensor reading
                 try:
                     value = float(data[1].strip())
                 except:
                     value = None
+
+                # get sensor state
                 state = data[3].strip()
                 if state == "na":
                     state = None
-            sensor_list.append((name, value, state))
-            self._trace('sensor "%s" value "%s" state "%s"' %
-                    (name, value, state))
+
+                # get sensor thresholds
+                #for (i, t) in ((4, 'lnr'),(5, 'lcr'), (6, 'lnc'), (7, 'unc'), (8, 'ucr'), (9, 'unr')):               
+                for (i, t) in enumerate(('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'), start=4):
+                    try:
+                        thresholds[t] = float(data[i].strip())
+                    except:
+                        pass
+
+            sensor_list.append((name, value, state, thresholds))
+            self._trace('sensor "%s" value "%s" state "%s" threshs "%s"' %
+                    (name, value, state, thresholds))
 
         return sensor_list
 
@@ -459,7 +499,7 @@ class IpmiLibrary:
 
         sensor = self._find_sensor_by_name(name)
         if not sensor:
-            raise RuntimeError('No sensor found with name "%s"', name)
+            raise RuntimeError('No sensor found with name "%s"' % name)
         return sensor[1]
 
     def get_sensor_state(self, name):
@@ -467,8 +507,28 @@ class IpmiLibrary:
 
         sensor = self._find_sensor_by_name(name)
         if not sensor:
-            raise RuntimeError('No sensor found with name "%s"', name)
+            raise RuntimeError('No sensor found with name "%s"' % name)
         return sensor[2]
+
+    def _get_sensor_thresholds(self, name):
+        name = str(name)
+        sensor =  self._find_sensor_by_name(name)
+        if not sensor:
+            raise RuntimeError('No sensor found with name "%s"' % name)
+        return sensor[3]
+    
+    def get_sensor_threshold(self, name, threshold):
+        name = str(name)
+        treshold = str(threshold)
+        thresholds = self._get_sensor_thresholds(name)
+        if not thresholds:
+            raise RuntimeError('No thresholds for sensor with name "%s"' % name)
+        
+        try:
+            return thresholds[threshold] 
+        except:
+            raise RuntimeError('Threshold "%s" not found for sensor "%s"' %
+                    (threshold, name))
 
     def sensor_value_should_be(self, name, expected_value, msg=None):
         expected_value = int_any_base(expected_value)
@@ -522,10 +582,11 @@ class IpmiLibrary:
         """
         name = str(name)
         threshold = str(threshold)
-        value = int(value)
-        
-        self._run_ipmitool_checked('sensor thresh "%s" "%s" %d' % (name, threshold, value) )
-
+        value = float(value)
+       
+        old_threshold = self.get_sensor_threshold(name, threshold) 
+        self._run_ipmitool_checked('sensor thresh "%s" "%s" %f' % (name, threshold, value) )
+        return old_threshold
 
     def _find_picmg_interface_type(self, type):
         return find_attribute(Picmg, type, 'PICMG_LINK_INTERFACE')
@@ -607,7 +668,10 @@ class IpmiLibrary:
         cmd = 'raw 0x2c 0x3c 0x00 %02x' % ((interface & 3)<<6|(channel & 0x3F))
         output = self._run_ipmitool_checked(cmd)
 
-    def start_watchdog_timer(self, countdown):
+    def _find_watchdog_action(self, watchdog_action):
+        return find_attribute(IpmiWatchdog, watchdog_action, 'IPMI_WATCHDOG_ACTION')
+
+    def start_watchdog_timer(self, countdown, action):
         """Start IPMI watchdog timer.
 
         The maximum countdown value is 6553 seconds.
@@ -618,10 +682,35 @@ class IpmiLibrary:
             raise RuntimeError('Watchdog countdown out of range')        
         countdown_lsb = countdown & 0xff
         countdown_msb = (countdown >> 8)& 0xff
-        
-        cmd = 'raw 6 0x24 4 1 0 8 %d %d' % (countdown_lsb, countdown_msb)
+        timer_use = 4
+        timer_action = self._find_watchdog_action(action)
+        pre_timeout_interval = 0
+        timer_use_exp_flags_clear = 8
+        cmd = 'raw 6 0x24 %d %d %d %d %d %d' % \
+            (timer_use, timer_action, pre_timeout_interval, \
+                timer_use_exp_flags_clear, countdown_lsb, countdown_msb)
         self._run_ipmitool_checked(cmd)
         cmd = 'raw 6 0x22'
+        self._run_ipmitool_checked(cmd)
+
+    def hpm_start_firmware_upload(self, file_path, filename):
+        """
+        """
+
+        cmd = 'hpm upgrade %s/%s all' % (file_path, filename)
+        self._run_ipmitool_checked(cmd)
+
+    def hpm_start_firmware_activation(self):
+        """
+        """
+
+        cmd = 'hpm activate'
+        self._run_ipmitool_checked(cmd)
+
+    def hpm_start_firmware_rollback(self):
+        """
+        """
+        cmd = 'hpm rollback'
         self._run_ipmitool_checked(cmd)
 
     def _warn(self, msg):

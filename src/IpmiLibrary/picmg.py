@@ -1,3 +1,9 @@
+# Kontron IpmiLibrary
+#
+# author: Heiko Thiery <heiko.thiery@kontron.com>
+#
+
+
 class Picmg:
     PICMG_LINK_INTERFACE_BASE           = 0x0
     PICMG_LINK_INTERFACE_FABRIC         = 0x1
@@ -8,6 +14,10 @@ class Picmg:
     PICMG_LINK_TYPE_INFINIBAND_FABRIC = 0x03
     PICMG_LINK_TYPE_STARFABRIC_FABRIC = 0x04
     PICMG_LINK_TYPE_PCIEXPRESS_FABRIC = 0x05
+    PICMG_LINK_TYPE_OEM0              = 0xf0
+    PICMG_LINK_TYPE_OEM1              = 0xf1
+    PICMG_LINK_TYPE_OEM2              = 0xf2
+    PICMG_LINK_TYPE_OEM3              = 0xf3
 
     PICMG_LINK_TYPE_EXT_BASE0 = 0x00
     PICMG_LINK_TYPE_EXT_BASE1 = 0x01
@@ -19,6 +29,8 @@ class Picmg:
     PICMG_LINK_TYPE_EXT_ETHERNET_FIX10GKX4       = 0x04
     PICMG_LINK_TYPE_EXT_ETHERNET_FIX40GKR4       = 0x05
 
+    PICMG_LINK_TYPE_EXT_OEM_LINK_TYPE_EXT_0      = 0x00
+    
     PICMG_LINK_FLAGS_LANE0    = 0x01
     PICMG_LINK_FLAGS_LANE0123 = 0x0f
 
