@@ -3,6 +3,8 @@
 # author: Heiko Thiery <heiko.thiery@kontron.com>
 #
 
+from utils import find_attribute
+
 
 class Picmg:
     PICMG_LINK_INTERFACE_BASE           = 0x0
@@ -39,3 +41,51 @@ class Picmg:
 
     PICMG_CHANNEL_SIGNALING_CLASS_BASIC = 0
     PICMG_CHANNEL_SIGNALING_CLASS_10_3125GBD = 4
+
+    def _find_picmg_interface_type(self, type):
+        return find_attribute(Picmg, type, 'PICMG_LINK_INTERFACE')
+
+    def _find_picmg_link_type(self, type):
+        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE')
+
+    def _find_picmg_link_type_extension(self, type):
+        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE_EXT')
+
+    def _find_picmg_link_flags(self, flags):
+        return find_attribute(Picmg, flags, 'PICMG_LINK_FLAGS')
+
+    def _find_picmg_link_state(self, state):
+        return find_attribute(Picmg, state, 'PICMG_LINK_STATE')
+
+    def _find_picmg_signaling_class(self, signaling_class):
+        return find_attribute(Picmg, signaling_class, 'PICMG_CHANNEL')
+
+class PicmgLed:
+    
+    PICMG_LED_COLOR_BLUE   = 0x01
+    PICMG_LED_COLOR_RED    = 0x02
+    PICMG_LED_COLOR_GREEN  = 0x03
+    PICMG_LED_COLOR_AMBER  = 0x04
+    PICMG_LED_COLOR_ORANGE = 0x05
+    PICMG_LED_COLOR_WHITE  = 0x06
+
+    PICMG_LED_FUNCTION_OFF = 0x00
+    PICMG_LED_FUNCTION_ON  = 0xff
+
+    def __init__(self, state_data):
+        self._states = state_data[1]
+        self._local_function = state_data[2] 
+        self._local_on_duration = state_data[3]
+        self._local_color = state_data[4]
+        if (self._states & 0x2):
+            self._override_function = state_data[5] 
+            self._override_on_duration = state_data[6] 
+            self._override_color = state_data[7]
+        if (self._states & 0x4):
+            self._lamp_test_duration = state_data[8]
+
+    def _find_picmg_led_color(self, color):
+        return find_attribute(PicmgLed, color, 'PICMG_LED_COLOR')
+
+    def _find_picmg_led_function(self, function):
+        return find_attribute(PicmgLed, function, 'PICMG_LED_FUNCTION')

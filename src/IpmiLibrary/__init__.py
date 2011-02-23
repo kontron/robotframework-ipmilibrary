@@ -7,6 +7,7 @@
 import time
 from sel import SelRecord
 from picmg import Picmg
+from picmg import PicmgLed
 from watchdog import IpmiWatchdog
 from subprocess import Popen, PIPE
 from robot import utils
@@ -28,10 +29,7 @@ class IpmiConnection:
         # connectioncache calls this function
         pass
 
-class Timeout(Exception):
-    pass
-
-class IpmiLibrary:
+class IpmiLibrary(Picmg, PicmgLed):
     IPMITOOL = 'ipmitool'
 
     def __init__(self, timeout=3.0, poll_interval=1.0):
@@ -588,23 +586,33 @@ class IpmiLibrary:
         self._run_ipmitool_checked('sensor thresh "%s" "%s" %f' % (name, threshold, value) )
         return old_threshold
 
-    def _find_picmg_interface_type(self, type):
-        return find_attribute(Picmg, type, 'PICMG_LINK_INTERFACE')
+    def picmg_get_led_state(self, fru_id, led_id):
+        """Get the Picmg LED state
+        """
+        fru_id = int(fru_id)
+        led_id = int(led_id)
 
-    def _find_picmg_link_type(self, type):
-        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE')
+        cmd = 'raw 0x2c 0x08 0 %d %d' % (fru_id, led_id)
+        output = self._run_ipmitool_checked(cmd) 
+        output = output.replace('\n','').replace('\r','')
+        get_state_data = [int(x,16) for x in output.strip().split(' ')]
+        self._led = PicmgLed(get_state_data)
 
-    def _find_picmg_link_type_extension(self, type):
-        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE_EXT')
+        self._trace('led_states = %d' % self._led._states) 
+        self._trace('led_local_color = %d' % self._led._local_color) 
+        self._trace('led_local_function = %d' % self._led._local_function) 
 
-    def _find_picmg_link_flags(self, flags):
-        return find_attribute(Picmg, flags, 'PICMG_LINK_FLAGS')
-
-    def _find_picmg_link_state(self, state):
-        return find_attribute(Picmg, state, 'PICMG_LINK_STATE')
-
+    def led_color_should_be(self, expected_color, msg=None):
+        expected_color = self._find_picmg_led_color(expected_color)
+        asserts.fail_unless_equal(expected_color, self._led._local_color, msg)
+  
+    def led_function_should_be(self, expected_function, msg=None):
+        expected_function = self._find_picmg_led_function(expected_function)
+        asserts.fail_unless_equal(expected_function, self._led._local_function, msg)
+ 
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state):
+
         """Send Picmg Set Portstate command
         `interface` the interface type 
         BASE, FABRIC, UPDATE_CHANNEL        
@@ -638,9 +646,6 @@ class IpmiLibrary:
         cmd = 'picmg portstate set %d %d %d %d %d 0 %d' % \
                 (interface, channel, flags, link_type, link_type_ext, state)
         self._run_ipmitool_checked(cmd)        
-
-    def _find_picmg_signaling_class(self, signaling_class):
-        return find_attribute(Picmg, signaling_class, 'PICMG_CHANNEL')
 
     def set_signaling_class(self, interface, channel, signaling_class):
         """Send `Set Channel Siganling Class` command
