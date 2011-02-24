@@ -1,4 +1,4 @@
-# 
+#
 # Kontron IpmiLibrary
 #
 # author: Michael Walle <michael.walle@kontron.com>
@@ -6,14 +6,17 @@
 
 import time
 from sel import SelRecord
-from picmg import Picmg
-from picmg import PicmgLed
-from watchdog import IpmiWatchdog
+from picmg import Commands
 from subprocess import Popen, PIPE
 from robot import utils
 from robot.utils import asserts
-from utils import find_attribute, int_any_base
+from utils import int_any_base
 from robot.utils.connectioncache import ConnectionCache
+from errors import TimeoutError
+
+from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_interface_type, find_sensor_type, find_event_direction
+from mapping import find_picmg_link_flags, find_picmg_link_type, find_picmg_link_type_extension, find_picmg_link_state
+from mapping import find_picmg_interface_type, find_picmg_signaling_class
 
 class IpmiConnection:
     def __init__(self, host, target_address, user, password,
@@ -29,7 +32,7 @@ class IpmiConnection:
         # connectioncache calls this function
         pass
 
-class IpmiLibrary(Picmg, PicmgLed):
+class IpmiLibrary(Commands):
     IPMITOOL = 'ipmitool'
 
     def __init__(self, timeout=3.0, poll_interval=1.0):
@@ -53,7 +56,7 @@ class IpmiLibrary(Picmg, PicmgLed):
 
         self._trace('rc = %s' % child.returncode)
         if child.returncode:
-            raise Timeout
+            raise TimeoutError()
 
     def wait_until_rmcp_is_ready(self, host, timeout=45):
         """Waits until the host can handle RMCP packets.
@@ -69,7 +72,7 @@ class IpmiLibrary(Picmg, PicmgLed):
             try:
                 self._rmcp_ping(host)
                 return
-            except Timeout:
+            except TimeoutError:
                 pass
 
         raise AssertionError('RMCP not ready in %s.'
@@ -134,8 +137,7 @@ class IpmiLibrary(Picmg, PicmgLed):
         """
         self._active_connection.close()
 
-    def wait_until_connection_is_responsive(self):
-        
+    def wait_until_connection_is_ready(self):
         start_time = time.time()
         while time.time() < start_time + self._timeout:
             output, rc = self._run_ipmitool('bmc info')
@@ -292,9 +294,6 @@ class IpmiLibrary(Picmg, PicmgLed):
                 matches.append(record)
         return matches
 
-    def _find_sensor_type(self, type):
-        return find_attribute(SelRecord, type, 'SENSOR_TYPE_')
-
     def sel_should_contain_x_entries(self, count, msg=None):
         """Fails if the SEL does not contain `count` entries.
         """
@@ -306,7 +305,7 @@ class IpmiLibrary(Picmg, PicmgLed):
         given sensor type.
         """
 
-        type = self._find_sensor_type(type)
+        type = find_sensor_type(type)
         count = int(count)
 
         records = self._find_sel_records_by_sensor_type(type)
@@ -316,13 +315,13 @@ class IpmiLibrary(Picmg, PicmgLed):
         """Fails if SEL contains the given sensor type.
         """
 
-        type = self._find_sensor_type(type)
+        type = find_sensor_type(type)
         records = self._find_sel_records_by_sensor_type(type)
         if len(records) != 0:
             raise AssertionError('SEL contains sensor type %s' % type)
 
     def wait_until_sel_contains_x_times_sensor_type(self, count, type):
-        type = self._find_sensor_type(type)
+        type = find_sensor_type(type)
 
         count = int(count)
 
@@ -380,7 +379,7 @@ class IpmiLibrary(Picmg, PicmgLed):
         | Select SEL Record By Sensor Type | 0xcf | -1 |
         """
 
-        type = self._find_sensor_type(type)
+        type = find_sensor_type(type)
         index = int(index)
 
         if index == 0:
@@ -421,12 +420,9 @@ class IpmiLibrary(Picmg, PicmgLed):
             raise RuntimeError('No SEL record selected.')
         asserts.fail_unless_equal(expected_value, value, msg)
 
-    def _find_event_direction(self, direction):
-        return find_attribute(SelRecord, direction, 'EVENT_')
-
     def selected_sel_records_event_direction_should_be(self,
             expected_direction, msg=None):
-        direction = self._find_event_direction(expected_direction)
+        direction = find_event_direction(expected_direction)
         asserts.fail_unless_equal(direction,
                 self._selected_sel_record.event_direction, msg)
 
@@ -464,7 +460,7 @@ class IpmiLibrary(Picmg, PicmgLed):
                 # get sensor reading
                 try:
                     value = float(data[1].strip())
-                except:
+                except ValueError:
                     value = None
 
                 # get sensor state
@@ -473,11 +469,12 @@ class IpmiLibrary(Picmg, PicmgLed):
                     state = None
 
                 # get sensor thresholds
-                #for (i, t) in ((4, 'lnr'),(5, 'lcr'), (6, 'lnc'), (7, 'unc'), (8, 'ucr'), (9, 'unr')):               
-                for (i, t) in enumerate(('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'), start=4):
+                #for (i, t) in enumerate(('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'), start=4):
+                for (i, t) in enumerate(('lnr', 'lcr', 'lnc', 'unc', 'ucr',
+                        'unr')):
                     try:
-                        thresholds[t] = float(data[i].strip())
-                    except:
+                        thresholds[t] = float(data[i+4].strip())
+                    except ValueError:
                         pass
 
             sensor_list.append((name, value, state, thresholds))
@@ -492,7 +489,12 @@ class IpmiLibrary(Picmg, PicmgLed):
             if sensor[0] == name:
                 return sensor
 
-    def get_sensor_value(self, name):
+    def get_sensor_reading(self, name):
+        """Returns a sensor reading.
+
+        `name` is the sensor ID string given in the SDR.
+        """
+
         name = str(name)
 
         sensor = self._find_sensor_by_name(name)
@@ -501,6 +503,10 @@ class IpmiLibrary(Picmg, PicmgLed):
         return sensor[1]
 
     def get_sensor_state(self, name):
+        """Returns the assertion state of a sensor.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
+        """
         name = str(name)
 
         sensor = self._find_sensor_by_name(name)
@@ -516,30 +522,54 @@ class IpmiLibrary(Picmg, PicmgLed):
         return sensor[3]
     
     def get_sensor_threshold(self, name, threshold):
+        """Returns the current threshold for a sensor.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
+
+        `threshold` can be one of the following strings: "lnr", "lcr", "lnc",
+        "unc", "ucr", "unr".
+
+        Example:
+        | ${threshold}= | Get Sensor Threshold | Vcc +12V | lnr |
+
+        """
+
         name = str(name)
-        treshold = str(threshold)
+        treshold = str(threshold).lower()
         thresholds = self._get_sensor_thresholds(name)
         if not thresholds:
             raise RuntimeError('No thresholds for sensor with name "%s"' % name)
         
         try:
             return thresholds[threshold] 
-        except:
+        except KeyError:
             raise RuntimeError('Threshold "%s" not found for sensor "%s"' %
                     (threshold, name))
 
     def sensor_value_should_be(self, name, expected_value, msg=None):
+        """Fails unless the sensor value has the expected value.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
+        """
+
         expected_value = int_any_base(expected_value)
         current_value = self.get_sensor_value(name)
         asserts.fail_unless_equal(expected_value, current_value, msg)
 
     def sensor_state_should_be(self, name, expected_state, msg=None):
+        """Fails unless the sensor state has the expected state.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
+        """
+
         expected_state = int_any_base(expected_state)
         current_state = self.get_sensor_state(name)
         asserts.fail_unless_equal(expected_state, current_state, msg)
 
     def wait_until_sensor_state_is(self, name, state):
         """Wait until a sensor reaches the given state.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
         """
         
         name = str(name)
@@ -557,6 +587,8 @@ class IpmiLibrary(Picmg, PicmgLed):
 
     def wait_until_sensor_value_is(self, name, value):
         """Wait until a sensor reaches the given value.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
         """
         
         name = str(name)
@@ -573,128 +605,123 @@ class IpmiLibrary(Picmg, PicmgLed):
                 % (name, state, utils.secs_to_timestr(self._timeout)))
 
     def set_sensor_threshold(self, name, threshold, value):
-        """Set specified threshold of sensor to value
-        
-        Example:
+        """Sets the threshold of a sensor.
 
+        For the `name` and `threshold` parameters see `Get Sensor Threshold`.
         """
+
         name = str(name)
         threshold = str(threshold)
         value = float(value)
        
-        old_threshold = self.get_sensor_threshold(name, threshold) 
         self._run_ipmitool_checked('sensor thresh "%s" "%s" %f' % (name, threshold, value) )
-        return old_threshold
 
     def picmg_get_led_state(self, fru_id, led_id):
-        """Get the Picmg LED state
+        """Returns the FRU LED state.
         """
         fru_id = int(fru_id)
         led_id = int(led_id)
 
-        cmd = 'raw 0x2c 0x08 0 %d %d' % (fru_id, led_id)
-        output = self._run_ipmitool_checked(cmd) 
-        output = output.replace('\n','').replace('\r','')
-        get_state_data = [int(x,16) for x in output.strip().split(' ')]
-        self._led = PicmgLed(get_state_data)
+        self._led = self.get_led_state(fru_id, led_id)
 
-        self._trace('led_states = %d' % self._led._states) 
-        self._trace('led_local_color = %d' % self._led._local_color) 
-        self._trace('led_local_function = %d' % self._led._local_function) 
+        self._trace('led_states = %d' % self._led.states) 
+        self._trace('led_local_color = %d' % self._led.local_color) 
+        self._trace('led_local_function = %d' % self._led.local_function) 
 
     def led_color_should_be(self, expected_color, msg=None):
-        expected_color = self._find_picmg_led_color(expected_color)
-        asserts.fail_unless_equal(expected_color, self._led._local_color, msg)
+        expected_color = find_picmg_led_color(expected_color)
+        asserts.fail_unless_equal(expected_color, self._led.local_color, msg)
   
     def led_function_should_be(self, expected_function, msg=None):
-        expected_function = self._find_picmg_led_function(expected_function)
-        asserts.fail_unless_equal(expected_function, self._led._local_function, msg)
+        expected_function = find_picmg_led_function(expected_function)
+        asserts.fail_unless_equal(expected_function, self._led.local_function, msg)
  
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state):
+        """Sends the "PICMG Set Portstate" command.
 
-        """Send Picmg Set Portstate command
-        `interface` the interface type 
-        BASE, FABRIC, UPDATE_CHANNEL        
+        `interface` is one of the following interface types: BASE, FABRIC,
+        UPDATE_CHANNEL.
 
-        `channel` is the interface channel Id.
+        `channel` is the interface channel ID. `flags` is the lane mask and one
+        of the following values: LANE0, LANE0123.
 
-        `flags` is the lane mask.
-        LANE0, LANE0123
+        `link_type` is one of the following values: BASE, ETHERNET_FABRIC,
+        INFINIBAND_FABRIC, STARFABRIC_FABRIC, PCIEXPRESS_FABRIC.
 
-        `link_type` is one of the following:
-        BASE, ETHERNET_FABRIC, INFINIBAND_FABRIC, STARFABRIC_FABRIC,
-        PCIEXPRESS_FABRIC
-        
-        `link_type_ext` is one of the following:
-        BASE0, BASE1, ETHERNET_FIX1000BX, ETHERNET_FIX10GBX4, ETHERNET_FCPI,
+        `link_type_ext` is one of the following values: BASE0, BASE1,
+        ETHERNET_FIX1000BX, ETHERNET_FIX10GBX4, ETHERNET_FCPI,
         ETHERNET_FIX1000KX_10GKR, ETHERNET_FIX10GKX4, ETHERNET_FIX40GKR4
 
-        `state` the link state.
-        ENABLE, DISABLE
+        `state` is the link state and has to be one of the following values:
+        ENABLE, DISABLE.
 
         Example:
         | Set Port State | BASE | 1 | LANE0 | BASE | BASE0 | ENABLE
         """
-        interface = self._find_picmg_interface_type(interface)
+
+        interface = find_picmg_interface_type(interface)
         channel = int(channel)
-        flags = self._find_picmg_link_flags(flags)
-        link_type = self._find_picmg_link_type(link_type)
-        link_type_ext = self._find_picmg_link_type_extension(link_type_ext)
-        state = self._find_picmg_link_state(state)
+        flags = find_picmg_link_flags(flags)
+        link_type = find_picmg_link_type(link_type)
+        link_type_ext = find_picmg_link_type_extension(link_type_ext)
+        state = find_picmg_link_state(state)
 
         cmd = 'picmg portstate set %d %d %d %d %d 0 %d' % \
                 (interface, channel, flags, link_type, link_type_ext, state)
         self._run_ipmitool_checked(cmd)        
 
     def set_signaling_class(self, interface, channel, signaling_class):
-        """Send `Set Channel Siganling Class` command
-        `interface` the interface type
-        BASE, FABRIC, UPDATE_CHANNEL
+        """Sends the `Set Channel Siganling Class` command.
 
-        `channel` is the interface channel Id.
+        `interface` the interface type (BASE, FABRIC, UPDATE_CHANNEL)
 
-        `class` is the channel signaling class capability
-        CLASS_BASIC, CLASS_10_3125GBD
+        `channel` is the interface channel ID.
+
+        `class` is the channel signaling class capability and hast to be one of
+        the following values: CLASS_BASIC, CLASS_10_3125GBD.
         """
-        
-        interface = self._find_picmg_interface_type(interface)
+
+        interface = find_picmg_interface_type(interface)
         channel = int(channel)
-        signaling_class = self._find_picmg_signaling_class(signaling_class)
+        signaling_class = find_picmg_signaling_class(signaling_class)
         cmd = 'raw 0x2c 0x3b 0x00 %d %d' % \
-                ((interface & 3)<<6|(channel & 0x3F), signaling_class&0xf)
+                ((interface & 3)<<6|(channel & 0x3F), signaling_class & 0x0f)
         self._run_ipmitool_checked(cmd)
 
     def get_signaling_class(self, interface, channel):
-        """Send `Get Channel Signaling Class` command
+        """Sends `Get Channel Signaling Class` command
         """
         
-        interface = self._find_picmg_interface_tpye(interface)
-        cmd = 'raw 0x2c 0x3c 0x00 %02x' % ((interface & 3)<<6|(channel & 0x3F))
+        interface = find_picmg_interface_type(interface)
+        cmd = 'raw 0x2c 0x3c 0x00 %02x' % ((interface & 3)<<6|(channel & 0x3f))
         output = self._run_ipmitool_checked(cmd)
 
-    def _find_watchdog_action(self, watchdog_action):
-        return find_attribute(IpmiWatchdog, watchdog_action, 'IPMI_WATCHDOG_ACTION')
+    def start_watchdog_timer(self, value, action):
+        """Sets and starts IPMI watchdog timer.
 
-    def start_watchdog_timer(self, countdown, action):
-        """Start IPMI watchdog timer.
+        The watchdog is set to `value` and after that it is started.
 
-        The maximum countdown value is 6553 seconds.
+        The maximum value is 6553 seconds. `value` is given in Robot
+        Framework's time format (e.g. 1 minute 20 seconds) that is explained in
+        the User Guide.
         """
-        countdown = utils.timestr_to_secs(countdown)
-        countdown = int(countdown * 10) # convert to 100ms steps 
-        if (countdown > 0xFFFF):
-            raise RuntimeError('Watchdog countdown out of range')        
-        countdown_lsb = countdown & 0xff
-        countdown_msb = (countdown >> 8)& 0xff
+        value = utils.timestr_to_secs(value)
+        value = int(value * 10) # convert to 100ms steps 
+        if (value > 0xffff):
+            raise RuntimeError('Watchdog value out of range')
+        value_lsb = value & 0xff
+        value_msb = (value >> 8) & 0xff
         timer_use = 4
         timer_action = self._find_watchdog_action(action)
         pre_timeout_interval = 0
         timer_use_exp_flags_clear = 8
+        # set watchdog
         cmd = 'raw 6 0x24 %d %d %d %d %d %d' % \
             (timer_use, timer_action, pre_timeout_interval, \
                 timer_use_exp_flags_clear, countdown_lsb, countdown_msb)
         self._run_ipmitool_checked(cmd)
+        # start watchdog
         cmd = 'raw 6 0x22'
         self._run_ipmitool_checked(cmd)
 

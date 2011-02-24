@@ -3,8 +3,7 @@
 # author: Heiko Thiery <heiko.thiery@kontron.com>
 #
 
-from utils import find_attribute
-
+from errors import DecodingError
 
 class Picmg:
     PICMG_LINK_INTERFACE_BASE           = 0x0
@@ -42,50 +41,61 @@ class Picmg:
     PICMG_CHANNEL_SIGNALING_CLASS_BASIC = 0
     PICMG_CHANNEL_SIGNALING_CLASS_10_3125GBD = 4
 
-    def _find_picmg_interface_type(self, type):
-        return find_attribute(Picmg, type, 'PICMG_LINK_INTERFACE')
+class Commands:
+    IPMI_NETFN_PICMG = 0x2c
+    IPMI_CMDID_PICMG_GET_LED_STATE = 0x08
+    IPMI_PICMG_IDENTIFIER = 0x00
 
-    def _find_picmg_link_type(self, type):
-        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE')
+    def get_led_state(self, fru_id, led_id):
+        cmd = 'raw 0x2c 0x08 0 %d %d' % (fru_id, led_id)
+        output = self._run_ipmitool_checked(cmd)
+        output = output.replace('\n','').replace('\r','')
+        data = [int(x,16) for x in output.strip().split(' ')]
 
-    def _find_picmg_link_type_extension(self, type):
-        return find_attribute(Picmg, type, 'PICMG_LINK_TYPE_EXT')
+        return LedState(data)
 
-    def _find_picmg_link_flags(self, flags):
-        return find_attribute(Picmg, flags, 'PICMG_LINK_FLAGS')
+class LedState:
+    PICMG_LED_STATE_LOCAL    = 0x01
+    PICMG_LED_STATE_OVERRIDE = 0x02
+    PICMG_LED_STATE_LAMPTEST = 0x04
 
-    def _find_picmg_link_state(self, state):
-        return find_attribute(Picmg, state, 'PICMG_LINK_STATE')
+    PICMG_LED_COLOR_BLUE     = 0x01
+    PICMG_LED_COLOR_RED      = 0x02
+    PICMG_LED_COLOR_GREEN    = 0x03
+    PICMG_LED_COLOR_AMBER    = 0x04
+    PICMG_LED_COLOR_ORANGE   = 0x05
+    PICMG_LED_COLOR_WHITE    = 0x06
 
-    def _find_picmg_signaling_class(self, signaling_class):
-        return find_attribute(Picmg, signaling_class, 'PICMG_CHANNEL')
+    PICMG_LED_FUNCTION_OFF       = 0x00
+    PICMG_LED_FUNCTION_BLINKING  = 0x01
+    PICMG_LED_FUNCTION_ON        = 0xff
 
-class PicmgLed:
-    
-    PICMG_LED_COLOR_BLUE   = 0x01
-    PICMG_LED_COLOR_RED    = 0x02
-    PICMG_LED_COLOR_GREEN  = 0x03
-    PICMG_LED_COLOR_AMBER  = 0x04
-    PICMG_LED_COLOR_ORANGE = 0x05
-    PICMG_LED_COLOR_WHITE  = 0x06
+    def __init__(self, data=None):
+        if data:
+            self.decode(data)
 
-    PICMG_LED_FUNCTION_OFF = 0x00
-    PICMG_LED_FUNCTION_ON  = 0xff
+    def encode(self):
+        raise RuntimeError('TBD')
 
-    def __init__(self, state_data):
-        self._states = state_data[1]
-        self._local_function = state_data[2] 
-        self._local_on_duration = state_data[3]
-        self._local_color = state_data[4]
-        if (self._states & 0x2):
-            self._override_function = state_data[5] 
-            self._override_on_duration = state_data[6] 
-            self._override_color = state_data[7]
-        if (self._states & 0x4):
-            self._lamp_test_duration = state_data[8]
+    def decode(self, data):
+        self.states = data[1]
+        if data[2] in (self.PICMG_LED_FUNCTION_ON, self.PICMG_LED_FUNCTION_OFF):
+            self.local_function = data[2]
+        else:
+            if data[2] in range(0xfb, 0xff):
+                raise DecodingError()
+            self.local_function = self.PICMG_LED_FUNCTION_BLINKING
+            self.local_off_duration = data[2]
+            self.local_on_duration = data[3]
 
-    def _find_picmg_led_color(self, color):
-        return find_attribute(PicmgLed, color, 'PICMG_LED_COLOR')
+        self.local_function = data[2]
+        self.local_color = data[4]
 
-    def _find_picmg_led_function(self, function):
-        return find_attribute(PicmgLed, function, 'PICMG_LED_FUNCTION')
+        if self.states & self.PICMG_LED_STATE_OVERRIDE:
+            self.override_function = data[5]
+            self.override_on_duration = data[6]
+            self.override_color = data[7]
+
+        if self.states & self.PICMG_LED_STATE_LAMPTEST:
+            self.lamp_test_duration = data[8]
+
