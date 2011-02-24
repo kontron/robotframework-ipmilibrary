@@ -5,6 +5,7 @@
 #
 
 import time
+from ipmi import IpmiConnection
 from sel import SelRecord
 from picmg import Commands
 from subprocess import Popen, PIPE
@@ -13,28 +14,13 @@ from robot.utils import asserts
 from utils import int_any_base
 from robot.utils.connectioncache import ConnectionCache
 from errors import TimeoutError
+from intf_ipmitool import IntfIpmitool
 
 from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_interface_type, find_sensor_type, find_event_direction
 from mapping import find_picmg_link_flags, find_picmg_link_type, find_picmg_link_type_extension, find_picmg_link_state
 from mapping import find_picmg_interface_type, find_picmg_signaling_class
 
-class IpmiConnection:
-    def __init__(self, host, target_address, user, password,
-            bridge_channel, double_bridge_target_address):
-        self.host = host
-        self.target_address = target_address
-        self.user = user
-        self.password = password
-        self.bridge_channel = bridge_channel;
-        self.double_bridge_target_address = double_bridge_target_address
-
-    def close(self):
-        # connectioncache calls this function
-        pass
-
 class IpmiLibrary(Commands):
-    IPMITOOL = 'ipmitool'
-
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._sel_records = []
         self._selected_sel_record = None
@@ -79,7 +65,8 @@ class IpmiLibrary(Commands):
                 % (utils.secs_to_timestr(timeout)))
 
     def open_ipmi_connection(self, host, target_address, user='', password='',
-            bridge_channel=None, double_bridge_target_address=None, alias=None):
+            bridge_channel=None, double_bridge_target_address=None,
+            type='ipmitool', alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
  
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -102,8 +89,19 @@ class IpmiLibrary(Commands):
         self._info('Opening IPMI connection to %s:0x%02x' % (host,
             target_address))
 
-        conn = IpmiConnection(host, target_address, user, password,
-                bridge_channel, double_bridge_target_address)
+        params = {}
+        params['host'] = host 
+        params['user'] = user
+        params['password'] = password
+        params['target_address'] = target_address
+        if bridge_channel:
+            params['bridge_channel'] = bridge_channel
+        if double_bridge_target_address:
+            params['double_bridge_target_address'] = double_bridge_target_address
+
+        conn = IpmiConnection()
+        conn.open(**params)
+
         self._active_connection = conn
 
         return self._cache.register(conn, alias)
@@ -146,36 +144,8 @@ class IpmiLibrary(Commands):
             else:
                 return
         
-    def _run_ipmitool(self, ipmi_cmd):
-        cmd = self.IPMITOOL
-        cmd += (' -I lan')
-        cmd += (' -H %s' % self._active_connection.host)
-
-        if self._active_connection.bridge_channel:
-            cmd += (' -b %d' % self._active_connection.bridge_channel)
-
-        if self._active_connection.double_bridge_target_address:
-            cmd += (' -t 0x%02x' %
-                    self._active_connection.double_bridge_target_address)
-            cmd += (' -T 0x%02x' % self._active_connection.target_address)
-        else:
-            cmd += (' -t 0x%02x' % self._active_connection.target_address)
-
-        cmd += (' -U "%s"' % self._active_connection.user)
-        cmd += (' -P "%s"' % self._active_connection.password)
-        cmd += (' %s 2>&1' % ipmi_cmd)
-
-        self._info('Running command "%s"' % cmd)
-        child = Popen(cmd, shell=True, stdout=PIPE)
-        output = child.communicate()[0]
-
-        self._trace('output = %s' % output)
-        self._trace('rc = %s' % child.returncode)
-
-        return output, child.returncode
-
     def _run_ipmitool_checked(self, cmd):
-        output, rc = self._run_ipmitool(cmd)
+        output, rc = self._active_connection._intf._run_ipmitool(cmd)
         if rc != 0:
             raise AssertionError('return code was %d' % rc)
         return output
