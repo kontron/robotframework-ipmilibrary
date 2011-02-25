@@ -68,7 +68,7 @@ class Ipmitool:
                 data = [ int(x,16) for x in output.split(' ') ]
 
         log().debug('IPMI Response (cc 0x%02x data [%s])', cc,
-                ' '.join(['%02x' % d for d in data]))
+                data and ' '.join(['%02x' % d for d in data]) or '')
    
         return (cc, data)
  
