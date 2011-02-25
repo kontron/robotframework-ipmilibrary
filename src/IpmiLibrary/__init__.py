@@ -685,7 +685,7 @@ class IpmiLibrary:
         value_lsb = value & 0xff
         value_msb = (value >> 8) & 0xff
         timer_use = 4
-        timer_action = self.find_watchdog_action(action)
+        timer_action = find_watchdog_action(action)
         pre_timeout_interval = 0
         timer_use_exp_flags_clear = 8
         # set watchdog
