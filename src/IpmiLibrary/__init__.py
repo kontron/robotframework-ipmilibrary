@@ -396,6 +396,17 @@ class IpmiLibrary(Commands):
         asserts.fail_unless_equal(direction,
                 self._selected_sel_record.event_direction, msg)
 
+    def selected_sel_record_should_be_from_sensor_number(self, sensor_number,
+             msg=None):
+        """
+        """
+        sensor_number = int_any_base(sensor_number)
+
+        if not self._selected_sel_record:
+            raise RuntimeError('No SEL record selected.')
+        asserts.fail_unless_equal(sensor_number,
+                self._selected_sel_record.sensor_number, msg)
+
     def _get_sensor_list(self):
         output = self._run_ipmitool_checked('sensor list')
         sensor_list = []
