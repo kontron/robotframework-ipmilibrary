@@ -4,9 +4,11 @@
 # author: Michael Walle <michael.walle@kontron.com>
 #
 
+import logging
 import time
 import ipmi
 import interfaces
+import logger
 from sel import SelRecord
 from subprocess import Popen, PIPE
 from robot import utils
@@ -24,7 +26,6 @@ from mapping import find_picmg_fru_control_option
 
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
-import logger
 
 class RobotLogHandler(logging.Handler):
     # mappping from logging to robots log levels
