@@ -5,22 +5,21 @@
 #
 
 import time
-from ipmi import IpmiConnection
+import ipmi
+import interfaces
 from sel import SelRecord
-from picmg import Commands
 from subprocess import Popen, PIPE
 from robot import utils
 from robot.utils import asserts
 from utils import int_any_base
 from robot.utils.connectioncache import ConnectionCache
 from errors import TimeoutError
-from intf_ipmitool import IntfIpmitool
 
 from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_interface_type, find_sensor_type, find_event_direction
 from mapping import find_picmg_link_flags, find_picmg_link_type, find_picmg_link_type_extension, find_picmg_link_state
-from mapping import find_picmg_interface_type, find_picmg_signaling_class
+from mapping import find_picmg_interface_type, find_picmg_signaling_class, find_watchdog_action
 
-class IpmiLibrary(Commands):
+class IpmiLibrary:
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._sel_records = []
         self._selected_sel_record = None
@@ -65,8 +64,7 @@ class IpmiLibrary(Commands):
                 % (utils.secs_to_timestr(timeout)))
 
     def open_ipmi_connection(self, host, target_address, user='', password='',
-            bridge_channel=None, double_bridge_target_address=None,
-            type='ipmitool', alias=None):
+            routing_information=[(0x20,0)], interface='ipmitool', alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
  
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -79,32 +77,24 @@ class IpmiLibrary(Commands):
         user = str(user)
         password = str(password)
 
-        if bridge_channel:
-            bridge_channel = int_any_base(bridge_channel)
-        if double_bridge_target_address:
-            double_bridge_target_address = int_any_base(double_bridge_target_address)
         if alias:
             alias = str(alias)
 
-        self._info('Opening IPMI connection to %s:0x%02x' % (host,
+        interface = interfaces.create_interface(interface)
+        ipmi_conn = ipmi.create_connection(interface)
+        ipmi_conn.session.set_session_type_rmcp(host)
+        ipmi_conn.session.set_auth_type_user(user, password)
+        ipmi_conn.target = ipmi.Target(target_address)
+        ipmi_conn.target.set_routing_information(routing_information)
+
+        self._info('Opening IPMI connection to %s:%s' % (host,
             target_address))
 
-        params = {}
-        params['host'] = host 
-        params['user'] = user
-        params['password'] = password
-        params['target_address'] = target_address
-        if bridge_channel:
-            params['bridge_channel'] = bridge_channel
-        if double_bridge_target_address:
-            params['double_bridge_target_address'] = double_bridge_target_address
+        ipmi_conn.session.establish()
 
-        conn = IpmiConnection()
-        conn.open(**params)
+        self._active_connection = ipmi_conn
 
-        self._active_connection = conn
-
-        return self._cache.register(conn, alias)
+        return self._cache.register(ipmi, alias)
 
     def switch_ipmi_connection(self, index_or_alias):
         """Switches between active connections using an index or alias.
@@ -145,7 +135,8 @@ class IpmiLibrary(Commands):
                 return
         
     def _run_ipmitool_checked(self, cmd):
-        output, rc = self._active_connection._intf._run_ipmitool(cmd)
+        output, rc = self._active_connection.interface._run_ipmitool(
+                self._active_connection.target, cmd)
         if rc != 0:
             raise AssertionError('return code was %d' % rc)
         return output
@@ -603,7 +594,7 @@ class IpmiLibrary(Commands):
         fru_id = int(fru_id)
         led_id = int(led_id)
 
-        self._led = self.get_led_state(fru_id, led_id)
+        self._led = self._active_connection.get_led_state(fru_id, led_id)
 
         self._trace('led_states = %d' % self._led.states) 
         self._trace('led_local_color = %d' % self._led.local_color) 
@@ -694,7 +685,7 @@ class IpmiLibrary(Commands):
         value_lsb = value & 0xff
         value_msb = (value >> 8) & 0xff
         timer_use = 4
-        timer_action = self._find_watchdog_action(action)
+        timer_action = self.find_watchdog_action(action)
         pre_timeout_interval = 0
         timer_use_exp_flags_clear = 8
         # set watchdog
