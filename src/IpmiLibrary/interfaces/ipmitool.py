@@ -62,9 +62,10 @@ class Ipmitool:
                 raise RuntimeError('ipmitool failed with rc=%d' % rc)
             cc = 0
             output = output.replace('\n','').replace('\r','').strip()
-            data = [ int(x,16) for x in output.split(' ') ]
-            if len(data) == 0:
+            if len(output) == 0:
                 data = None
+            else:
+                data = [ int(x,16) for x in output.split(' ') ]
 
         log().debug('IPMI Response (cc 0x%02x data [%s])', cc,
                 ' '.join(['%02x' % d for d in data]))
