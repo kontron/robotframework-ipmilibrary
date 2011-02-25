@@ -16,7 +16,6 @@ from robot.utils import asserts
 from utils import int_any_base
 from robot.utils.connectioncache import ConnectionCache
 from errors import TimeoutError
-
 from picmg import LinkInfo
 
 from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_interface_type, find_sensor_type, find_event_direction
