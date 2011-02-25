@@ -15,9 +15,12 @@ from utils import int_any_base
 from robot.utils.connectioncache import ConnectionCache
 from errors import TimeoutError
 
+from picmg import LinkInfo
+
 from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_interface_type, find_sensor_type, find_event_direction
 from mapping import find_picmg_link_flags, find_picmg_link_type, find_picmg_link_type_extension, find_picmg_link_state
 from mapping import find_picmg_interface_type, find_picmg_signaling_class, find_watchdog_action
+from mapping import find_picmg_fru_control_option
 
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
@@ -182,25 +185,32 @@ class IpmiLibrary:
         """Clears the activation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._run_ipmitool_checked('picmg policy set %d 1 0' % fruid)
+        self._active_connection.set_fru_activation_policy(fruid, 1, 0)
 
     def clear_deactivation_lock_bit(self, fruid=0):
         """Clears the deactivation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._run_ipmitool_checked('picmg policy set %d 2 0' % fruid)
+        self._active_connection.set_fru_activation_policy(fruid, 2, 0)
 
+    def issue_frucontrol(self, option, fruid=0):
+        """Sends a _frucontrol_ to the fiven FRU.
+        `option` is one of the following values: 
+         COLD_RESET, WARM_RESET, ISSUE_DIAGNOSTIC_INTERRUPT, QUIESCED
+        """
+        fruid = int(fruid)
+        option = find_picmg_fru_control_option(option)
+        self._active_connection.fru_control(fruid, option)
+        
     def issue_frucontrol_cold_reset(self, fruid=0):
         """Sends a _frucontrol cold reset_ to the given FRU.
         """
-        fruid = int(fruid)
-        self._run_ipmitool_checked('picmg frucontrol %d 0' % fruid)
+        self.issue_frucontrol('COLD_RESET', fruid)
 
     def issue_frucontrol_diagnostic_interrupt(self, fruid=0):
         """Sends a _frucontrol diagnostic interrupt_ to the given FRU.
         """
-        fruid = int(fruid)
-        self._run_ipmitool_checked('picmg frucontrol %d 3' % fruid)
+        self.issue_frucontrol('ISSUE_DIAGNOSTIC_INTERRUPT', fruid)
 
     def issue_chassis_power_down(self):
         """Sends a _chassis power down_ command.
@@ -655,20 +665,21 @@ class IpmiLibrary:
         `state` is the link state and has to be one of the following values:
         ENABLE, DISABLE.
 
+        Note: Link Grouping ID is not supported yet
+
         Example:
         | Set Port State | BASE | 1 | LANE0 | BASE | BASE0 | ENABLE
         """
 
-        interface = find_picmg_interface_type(interface)
-        channel = int(channel)
-        flags = find_picmg_link_flags(flags)
-        link_type = find_picmg_link_type(link_type)
-        link_type_ext = find_picmg_link_type_extension(link_type_ext)
-        state = find_picmg_link_state(state)
-
-        cmd = 'picmg portstate set %d %d %d %d %d 0 %d' % \
-                (interface, channel, flags, link_type, link_type_ext, state)
-        self._run_ipmitool_checked(cmd)        
+        link_info = LinkInfo()
+        link_info.interface = find_picmg_interface_type(interface)
+        link_info.channel = int(channel)
+        link_info.flags = find_picmg_link_flags(flags)
+        link_info.link_type = find_picmg_link_type(link_type)
+        link_info.extension = find_picmg_link_type_extension(link_type_ext)
+        link_info.state = find_picmg_link_state(state)
+        link_info.group_id = 0
+        self._active_connection.set_port_state(link_info)
 
     def set_signaling_class(self, interface, channel, signaling_class):
         """Sends the `Set Channel Siganling Class` command.
@@ -684,17 +695,16 @@ class IpmiLibrary:
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
         signaling_class = find_picmg_signaling_class(signaling_class)
-        cmd = 'raw 0x2c 0x3b 0x00 %d %d' % \
-                ((interface & 3)<<6|(channel & 0x3F), signaling_class & 0x0f)
-        self._run_ipmitool_checked(cmd)
+        self._active_connection.set_signaling_class(interface, channel, 
+                signaling_class)
 
     def get_signaling_class(self, interface, channel):
         """Sends `Get Channel Signaling Class` command
         """
         
         interface = find_picmg_interface_type(interface)
-        cmd = 'raw 0x2c 0x3c 0x00 %02x' % ((interface & 3)<<6|(channel & 0x3f))
-        output = self._run_ipmitool_checked(cmd)
+        channel = int(channel)
+        self._active_connection.get_signaling_class(interfac, channel)
 
     def start_watchdog_timer(self, value, action):
         """Sets and starts IPMI watchdog timer.
@@ -718,7 +728,7 @@ class IpmiLibrary:
         # set watchdog
         cmd = 'raw 6 0x24 %d %d %d %d %d %d' % \
             (timer_use, timer_action, pre_timeout_interval, \
-                timer_use_exp_flags_clear, countdown_lsb, countdown_msb)
+                timer_use_exp_flags_clear, value_lsb, value_msb)
         self._run_ipmitool_checked(cmd)
         # start watchdog
         cmd = 'raw 6 0x22'

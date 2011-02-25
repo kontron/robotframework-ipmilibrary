@@ -56,12 +56,32 @@ LED_FUNCTION_OFF       = 0x00
 LED_FUNCTION_BLINKING  = 0x01
 LED_FUNCTION_ON        = 0xff
 
+FRU_CONTROL_OPTION_COLD_RESET = 0x00
+FRU_CONTROL_OPTION_WARM_RESET = 0x01
+FRU_CONTROL_OPTION_GRACEFUL_REBOOT = 0x02
+FRU_CONTROL_OPTION_ISSUE_DIAGNOSTIC_INTERRUPT = 0x03
+FRU_CONTROL_OPTION_QUIESCED = 0x04
+
 NETFN_PICMG = 0x2c
-CMD_GET_LED_STATE = 0x08
+
+CMD_FRU_CONTROL               = 0x04
+CMD_GET_LED_STATE             = 0x08
+CMD_SET_FRU_ACTIVATION_POLICY = 0x0a
+CMD_GET_FRU_ACTIVATION_POLICY = 0x0b
+CMD_SET_PORT_STATE            = 0x0e
+CMD_SET_SIGNALING_CLASS       = 0x3b
+CMD_GET_SIGNALING_CLASS       = 0x3c
+
 PICMG_IDENTIFIER = 0x00
 
 
 class Commands:
+    def fru_control(self, fn, fru_id, option):
+        req = [ NETFN_PICMG << 2 | 0, CMD_FRU_CONTROL, PICMG_IDENTIFIER,
+                fru_id, option ]
+        rsp = fn(req)
+        if rsp[0] != 0x00:
+            raise CompletionCodeError(rsp[0])
 
     def get_led_state(self, fn, fru_id, led_id):
         req = [ NETFN_PICMG << 2 | 0, CMD_GET_LED_STATE, PICMG_IDENTIFIER,
@@ -71,6 +91,61 @@ class Commands:
             raise CompletionCodeError(rsp[0])
         return LedState(rsp[1])
 
+    def set_fru_activation_policy(self, fn, fru_id, mask_bits, set_bits):
+        req = [ NETFN_PICMG << 2 | 0, CMD_SET_FRU_ACTIVATION_POLICY,
+                 PICMG_IDENTIFIER, fru_id, mask_bits, set_bits ]
+        rsp = fn(req)
+        if rsp[0] != 0x00:
+            raise CompletionCodeError(rsp[0])
+
+    def set_port_state(self, fn, link_info):
+        req = [ NETFN_PICMG << 2 | 0, CMD_SET_PORT_STATE,
+                 PICMG_IDENTIFIER ] 
+        req.extend(link_info.encode())
+        rsp = fn(req)
+        if rsp[0] != 0x00:
+            raise CompletionCodeError(rsp[0])
+
+    def set_signaling_class(self, fn, interface, channel, signaling_class):
+        req = [ NETFN_PICMG << 2 | 0, CMD_SET_SIGNALING_CLASS, 
+                PICMG_IDENTIFIER, (interface & 3)<<6|(channel & 0x3f), 
+                signaling_class ]
+        rsp = fn(req)
+        if rsp[0] != 0x00:
+            raise CompletionCodeError(rsp[0])
+
+    def get_signaling_class(self, fn, interface, channel):
+        req = [ NETFN_PICMG << 2 | 0, CMD_GET_SIGNALING_CLASS, 
+                PICMG_IDENTIFIER, (interface & 3)<<6|(channel & 0x3f), 
+                signaling_class ]
+        rsp = fn(req)
+        if rsp[0] != 0x00:
+            raise CompletionCodeError(rsp[0])
+        return rsp
+
+class LinkInfo:
+    def __init__(self, channel=None, interface=None, flags=None, 
+            link_type=None, extension=None, group_id=None, state=None):
+        self.channel = channel
+        self.interface = interface
+        self.flags = flags
+        self.link_type = link_type
+        self.extension = extension
+        self.group_id = group_id
+        self.state = state
+
+    def encode(self):
+        data = [0, 0, 0, 0, 0]
+        data[0] = self.channel & 0x3f | (self.interface & 0x3) << 6
+        data[1] = self.flags & 0xf | (self.link_type & 0xf) << 4
+        data[2] = (self.link_type & 0xf0) >> 4 | (self.extension & 0xf) << 4
+        data[3] = self.group_id
+        data[4] = self.state
+        return data
+
+    def decode(self, data):
+        raise RuntimeError('TBD')
+ 
 class LedState:
     def __init__(self, data=None):
         if data:
