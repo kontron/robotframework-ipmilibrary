@@ -7,6 +7,7 @@
 
 from IpmiLibrary.errors import TimeoutError
 from IpmiLibrary.ipmi import Session
+from IpmiLibrary.logger import log
 from subprocess import Popen, PIPE
 import re
 
@@ -23,7 +24,6 @@ class Ipmitool:
     IPMITOOL_PATH = 'ipmitool'
 
     def __init__(self):
-
         self.re_err = re.compile(
                 "Unable to send RAW command \(.*rsp=(0x[0-9a-f]+)\)")
         self.re_timeout = re.compile(
@@ -41,6 +41,8 @@ class Ipmitool:
         Returns a tuple (cc, rsp_data), with `cc` being the completion code.
         """
 
+        log().debug('IPMI Request [%s]', ' '.join(['%02x' % d for d in req]))
+
         lun = req[0] & 0x3
         req[0] = req[0] >> 2
         cmd = ('-l %d raw' % lun)
@@ -51,7 +53,7 @@ class Ipmitool:
         match_err = self.re_err.match(output)
         match_timeout = self.re_timeout.match(output)
         if match_err:
-            cc = int(match.group(1), 16)
+            cc = int(match_err.group(1), 16)
             data = None
         elif match_timeout:
             raise TimeoutError()
@@ -63,6 +65,9 @@ class Ipmitool:
             data = [ int(x,16) for x in output.split(' ') ]
             if len(data) == 0:
                 data = None
+
+        log().debug('IPMI Response (cc 0x%02x data [%s])', cc,
+                ' '.join(['%02x' % d for d in data]))
    
         return (cc, data)
  
@@ -76,7 +81,6 @@ class Ipmitool:
         cmd = self.IPMITOOL_PATH
         cmd += (' -I lan')
         cmd += (' -H %s' % self._session._rmcp_host)
-
 
         if hasattr(target, 'routing'):
             # we have to do bridging here
@@ -105,8 +109,13 @@ class Ipmitool:
         cmd += (' %s' % ipmitool_cmd)
         cmd += (' 2>&1')
 
+        log().debug('Run ipmitool "%s"', cmd)
+
         child = Popen(cmd, shell=True, stdout=PIPE)
         output = child.communicate()[0]
+
+        log().debug('return with rc=%d, output was:\n%s', child.returncode,
+                output)
 
         return output, child.returncode
 

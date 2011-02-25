@@ -19,6 +19,33 @@ from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_in
 from mapping import find_picmg_link_flags, find_picmg_link_type, find_picmg_link_type_extension, find_picmg_link_state
 from mapping import find_picmg_interface_type, find_picmg_signaling_class, find_watchdog_action
 
+from robot.output import LOGGER
+from robot.output.loggerhelper import Message
+import logger
+
+class RobotLogHandler(logging.Handler):
+    # mappping from logging to robots log levels
+    mapping = {
+            'NOTSET'   : 'NONE',
+            'DEBUG'    : 'DEBUG',
+            'INFO'     : 'INFO',
+            'WARNING'  : 'WARN',
+            'ERROR'    : 'ERROR',
+            'CRITICAL' : 'ERROR',
+    }
+    def __init__(self):
+        logging.Handler.__init__(self)
+        # format it the way robotframework understands it
+        self.setFormatter(logging.Formatter("*%(levelname)s* %(message)s"))
+    def emit(self, record):
+        msg = record.getMessage()
+        lvl = self.mapping[record.levelname]
+        LOGGER.log_message(Message(msg, lvl))
+
+# add log handler to pyipmi
+logger.add_log_handler(RobotLogHandler())
+logger.set_log_level(logging.DEBUG)
+
 class IpmiLibrary:
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._sel_records = []
