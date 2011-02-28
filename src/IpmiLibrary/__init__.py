@@ -153,7 +153,7 @@ class IpmiLibrary:
     def close_ipmi_connection(self, loglevel=None):
         """Closes the current connection.
         """
-        self._active_connection.close()
+        self._active_connection.session.close()
 
     def wait_until_connection_is_ready(self):
         start_time = time.time()
