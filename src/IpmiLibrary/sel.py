@@ -5,7 +5,6 @@
 #
 
 import struct
-from errors import NotSupportedError
 
 EVENT_ASSERTION = 0
 EVENT_DEASSERTION = 1
@@ -59,6 +58,10 @@ SENSOR_TYPE_IPMB_PHYSICAL_LINK          = 0xF1
 SENSOR_TYPE_MODULE_HOT_SWAP             = 0xF2
 SENSOR_TYPE_POWER_CHANNEL_NOTIFICATION  = 0xF3
 SENSOR_TYPE_TELCO_ALARM_INPUT           = 0xF4
+
+
+class NotSupportedError(Exception):
+    pass
 
 
 class SelRecord:

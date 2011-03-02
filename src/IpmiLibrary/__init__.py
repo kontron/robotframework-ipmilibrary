@@ -6,25 +6,20 @@
 
 import logging
 import time
-import ipmi
-import interfaces
-import logger
 from sel import SelRecord
 from subprocess import Popen, PIPE
+
 from robot import utils
 from robot.utils import asserts
-from utils import int_any_base
 from robot.utils.connectioncache import ConnectionCache
-from errors import TimeoutError
-from picmg import LinkInfo
-
-from mapping import find_picmg_led_color, find_picmg_led_function, find_picmg_interface_type, find_sensor_type, find_event_direction
-from mapping import find_picmg_link_flags, find_picmg_link_type, find_picmg_link_type_extension, find_picmg_link_state
-from mapping import find_picmg_interface_type, find_picmg_signaling_class, find_watchdog_action
-from mapping import find_picmg_fru_control_option
-
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
+import pyipmi
+import pyipmi.logger
+import pyipmi.interfaces
+
+from utils import int_any_base
+from mapping import *
 
 class RobotLogHandler(logging.Handler):
     # mappping from logging to robots log levels
@@ -46,8 +41,13 @@ class RobotLogHandler(logging.Handler):
         LOGGER.log_message(Message(msg, lvl))
 
 # add log handler to pyipmi
-logger.add_log_handler(RobotLogHandler())
-logger.set_log_level(logging.DEBUG)
+pyipmi.logger.add_log_handler(RobotLogHandler())
+pyipmi.logger.set_log_level(logging.DEBUG)
+
+
+class TimeoutError(Exception):
+    pass
+
 
 class IpmiLibrary:
     def __init__(self, timeout=3.0, poll_interval=1.0):
@@ -110,19 +110,19 @@ class IpmiLibrary:
         if alias:
             alias = str(alias)
 
-        interface = interfaces.create_interface(interface)
-        ipmi_conn = ipmi.create_connection(interface)
-        ipmi_conn.session.set_session_type_rmcp(host)
-        ipmi_conn.session.set_auth_type_user(user, password)
-        ipmi_conn.target = ipmi.Target(target_address)
-        ipmi_conn.target.set_routing_information(routing_information)
+        interface = pyipmi.interfaces.create_interface(interface)
+        ipmi = pyipmi.create_connection(interface)
+        ipmi.session.set_session_type_rmcp(host)
+        ipmi.session.set_auth_type_user(user, password)
+        ipmi.target = pyipmi.Target(target_address)
+        ipmi.target.set_routing_information(routing_information)
 
         self._info('Opening IPMI connection to %s:%s' % (host,
             target_address))
 
-        ipmi_conn.session.establish()
+        ipmi.session.establish()
 
-        self._active_connection = ipmi_conn
+        self._active_connection = ipmi
 
         return self._cache.register(ipmi, alias)
 
@@ -185,32 +185,23 @@ class IpmiLibrary:
         """Clears the activation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.set_fru_activation_policy(fruid, 1, 0)
+        self._active_connection.clear_fru_activation_lock(fruid)
 
     def clear_deactivation_lock_bit(self, fruid=0):
         """Clears the deactivation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.set_fru_activation_policy(fruid, 2, 0)
-
-    def issue_frucontrol(self, option, fruid=0):
-        """Sends a _frucontrol_ to the fiven FRU.
-        `option` is one of the following values: 
-         COLD_RESET, WARM_RESET, ISSUE_DIAGNOSTIC_INTERRUPT, QUIESCED
-        """
-        fruid = int(fruid)
-        option = find_picmg_fru_control_option(option)
-        self._active_connection.fru_control(fruid, option)
+        self._active_connection.set_fru_deactivation_lock(fruid)
         
     def issue_frucontrol_cold_reset(self, fruid=0):
         """Sends a _frucontrol cold reset_ to the given FRU.
         """
-        self.issue_frucontrol('COLD_RESET', fruid)
+        self._active_connection.fru_control_cold_reset(fruid)
 
     def issue_frucontrol_diagnostic_interrupt(self, fruid=0):
         """Sends a _frucontrol diagnostic interrupt_ to the given FRU.
         """
-        self.issue_frucontrol('ISSUE_DIAGNOSTIC_INTERRUPT', fruid)
+        self._active_connection.fru_control_diagnostic_interrupt(fruid)
 
     def issue_chassis_power_down(self):
         """Sends a _chassis power down_ command.
@@ -633,17 +624,23 @@ class IpmiLibrary:
 
         self._led = self._active_connection.get_led_state(fru_id, led_id)
 
-        self._trace('led_states = %d' % self._led.states) 
-        self._trace('led_local_color = %d' % self._led.local_color) 
-        self._trace('led_local_function = %d' % self._led.local_function) 
+        self._debug('LED state %s' % self._led)
 
-    def led_color_should_be(self, expected_color, msg=None):
+    def led_color_should_be(self, expected_color, msg=None, values=True):
         expected_color = find_picmg_led_color(expected_color)
-        asserts.fail_unless_equal(expected_color, self._led.local_color, msg)
+        if self._led.override_enabled:
+            color = self._led.override_color
+        else:
+            color = self._led.local_color
+        asserts.fail_unless_equal(expected_color, color, msg, values)
   
-    def led_function_should_be(self, expected_function, msg=None):
+    def led_function_should_be(self, expected_function, msg=None, values=True):
         expected_function = find_picmg_led_function(expected_function)
-        asserts.fail_unless_equal(expected_function, self._led.local_function, msg)
+        if self._led.override_enabled:
+            function = self._led.override_function
+        else:
+            function = self._led.local_function
+        asserts.fail_unless_equal(expected_function, function, msg, values)
  
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state):
