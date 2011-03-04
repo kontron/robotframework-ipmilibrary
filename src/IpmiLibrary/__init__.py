@@ -159,7 +159,8 @@ class IpmiLibrary:
     def wait_until_connection_is_ready(self):
         start_time = time.time()
         while time.time() < start_time + self._timeout:
-            output, rc = self._run_ipmitool('bmc info')
+            output, rc = self._active_connection.interface._run_ipmitool(
+                    self._active_connection.target, 'bmc info')
             if rc != 0:    
                 time.sleep(self._poll_interval)
             else:
@@ -172,10 +173,10 @@ class IpmiLibrary:
             raise AssertionError('return code was %d' % rc)
         return output
 
-    def issue_bmc_cold_reset(self, fruid=0):
+    def issue_bmc_cold_reset(self):
         """Sends a _bmc cold reset_ to the given controler.
         """
-        self._run_ipmitool_checked('raw 6 2')
+        self._active_connection.cold_reset()
 
     def get_bmc_device_id(self):
         """Sends a _bmc get device id_ command to the given controler.
@@ -192,7 +193,7 @@ class IpmiLibrary:
         """Clears the deactivation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.set_fru_deactivation_lock(fruid)
+        self._active_connection.clear_fru_deactivation_lock(fruid)
         
     def issue_frucontrol_cold_reset(self, fruid=0):
         """Sends a _frucontrol cold reset_ to the given FRU.
@@ -207,17 +208,17 @@ class IpmiLibrary:
     def issue_chassis_power_down(self):
         """Sends a _chassis power down_ command.
         """
-        self._run_ipmitool_checked('chassis power down')
+        self._active_connection.chassis_control_power_down()
 
     def issue_chassis_power_cycle(self):
         """Sends a _chassis power cycle_.
         """
-        self._run_ipmitool_checked('chassis power cycle')
+        self._active_connection.chassis_control_power_cycle()
 
     def issue_chassis_power_reset(self):
         """Sends a _chassis power reset_.
         """
-        self._run_ipmitool_checked('chassis power reset')
+        self._active_connection.chassis_control_hard_reset()
 
     def set_timeout(self, timeout):
         """Sets the timeout used in `Wait Until X` keywords to the given value.
