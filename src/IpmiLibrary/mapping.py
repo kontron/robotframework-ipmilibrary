@@ -2,7 +2,6 @@ import pyipmi
 import pyipmi.picmg
 
 import sel
-import bmc
 from utils import find_attribute
 
 # new
