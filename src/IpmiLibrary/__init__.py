@@ -251,12 +251,17 @@ class IpmiLibrary:
         return utils.secs_to_timestr(old)
 
     def clear_sel(self):
-        """Clears the SEL.
-        """
+        """Clears the sensor event log."""
+
         self._run_ipmitool_checked('sel clear')
 
+    def log_sel(self):
+        """Dumps the sensor event log and logs it."""
+        output = self._run_ipmitool_checked('sel list -vv')
+        self._info('SEL dump:\n%s' % output)
+
     def fetch_sel(self):
-        """Fetches the SEL.
+        """Fetches the sensor event log.
         
         Fetching the SEL is required for all further operation on the SEL.
 
