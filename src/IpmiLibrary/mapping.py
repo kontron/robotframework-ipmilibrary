@@ -6,6 +6,9 @@ import bmc
 from utils import find_attribute
 
 # new
+def find_fru_field_type_code(type_code):
+    return find_attribute(pyipmi.fru.FruField, type_code, 'TYPE_CODE')
+
 def find_picmg_led_color(color):
     return find_attribute(pyipmi.picmg.LedState, color, 'COLOR')
 
