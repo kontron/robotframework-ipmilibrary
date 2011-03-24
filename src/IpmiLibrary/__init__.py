@@ -756,6 +756,21 @@ class IpmiLibrary:
         cmd = 'hpm rollback'
         self._run_ipmitool_checked(cmd)
 
+    def send_raw_command(self, *bytes):
+        """Sends a raw IPMI command.
+
+        `bytes` can either be a list or serveral scalar values.
+        If a LUN other then zero is needed, it can be given with the first
+        value of the list by prepending 'lun=', eg. lun=3.
+
+        Example:
+        | ${values}= | Set Variable | 0x06 | 0x01 | |
+        | Send Raw Command | ${values} |  |  | | # BMC info command
+        | Send Raw Command | 0x06 | 0x01 | | | # same as above
+        | Send Raw Command | lun=3 | 0x3e | 0x62 | ... | # LUN other than zero
+        """
+        raise RuntimeError('implementation needed :)')
+
     def _warn(self, msg):
         self._log(msg, 'WARN')
 
