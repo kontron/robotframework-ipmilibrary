@@ -552,6 +552,13 @@ class IpmiLibrary:
             raise RuntimeError('Threshold "%s" not found for sensor "%s"' %
                     (threshold, name))
 
+    def sensor_should_be_present(self, name):
+        """Fails if the sensor is not present
+        """
+        sensor = self._find_sensor_by_name(name)
+        if not sensor:
+            raise RuntimeError('No sensor found with name "%s"' % name)
+
     def sensor_value_should_be(self, name, expected_value, msg=None):
         """Fails unless the sensor value has the expected value.
 
