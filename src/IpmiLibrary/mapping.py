@@ -16,19 +16,20 @@ def find_picmg_led_function(function):
 
 # old ones.. should go away/be replaced soon
 def find_picmg_interface_type(interface_type):
-    return find_attribute(pyipmi.picmg, interface_type, 'LINK_INTERFACE')
+    return find_attribute(pyipmi.picmg.LinkInfo, interface_type,
+            'INTERFACE')
 
 def find_picmg_link_type(link_type):
-    return find_attribute(pyipmi.picmg, link_type, 'LINK_TYPE')
+    return find_attribute(pyipmi.picmg.LinkInfo, link_type, 'TYPE')
 
 def find_picmg_link_type_extension(extension):
-    return find_attribute(pyipmi.picmg, extension, 'LINK_TYPE_EXT')
+    return find_attribute(pyipmi.picmg.LinkInfo, extension, 'TYPE_EXT')
 
 def find_picmg_link_flags(flags):
-    return find_attribute(pyipmi.picmg, flags, 'LINK_FLAGS')
+    return find_attribute(pyipmi.picmg.LinkInfo, flags, 'FLAGS')
 
 def find_picmg_link_state(state):
-    return find_attribute(pyipmi.picmg, state, 'LINK_STATE')
+    return find_attribute(pyipmi.picmg.LinkInfo, state, 'STATE')
 
 def find_picmg_signaling_class(signaling_class):
     return find_attribute(pyipmi.picmg, signaling_class,

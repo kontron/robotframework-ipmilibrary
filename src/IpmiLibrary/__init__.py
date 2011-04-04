@@ -682,14 +682,14 @@ class IpmiLibrary:
         | Set Port State | BASE | 1 | LANE0 | BASE | BASE0 | ENABLE
         """
 
-        link_info = LinkInfo()
+        link_info = pyipmi.picmg.LinkInfo()
         link_info.interface = find_picmg_interface_type(interface)
         link_info.channel = int(channel)
-        link_info.flags = find_picmg_link_flags(flags)
-        link_info.link_type = find_picmg_link_type(link_type)
+        link_info.link_flags = find_picmg_link_flags(flags)
+        link_info.type = find_picmg_link_type(link_type)
         link_info.extension = find_picmg_link_type_extension(link_type_ext)
         link_info.state = find_picmg_link_state(state)
-        link_info.group_id = 0
+        link_info.grouping_id = 0
         self._active_connection.set_port_state(link_info)
 
     def set_signaling_class(self, interface, channel, signaling_class):
