@@ -97,7 +97,7 @@ class IpmiLibrary:
     def open_ipmi_connection(self, host, target_address, user='', password='',
             routing_information=[(0x20,0)], interface='ipmitool', alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
- 
+
         `host` is the IP or hostname of the shelf manager. `target_address` the
         IPMI address to which the command should be sent. `user` and `password`
         are used to authenticate against the shelf manager.
@@ -161,11 +161,11 @@ class IpmiLibrary:
         while time.time() < start_time + self._timeout:
             output, rc = self._active_connection.interface._run_ipmitool(
                     self._active_connection.target, 'bmc info')
-            if rc != 0:    
+            if rc != 0:
                 time.sleep(self._poll_interval)
             else:
                 return
-        
+
     def _run_ipmitool_checked(self, cmd):
         output, rc = self._active_connection.interface._run_ipmitool(
                 self._active_connection.target, cmd)
@@ -194,7 +194,7 @@ class IpmiLibrary:
         """
         fruid = int(fruid)
         self._active_connection.clear_fru_deactivation_lock(fruid)
-        
+
     def issue_frucontrol_cold_reset(self, fruid=0):
         """Sends a _frucontrol cold reset_ to the given FRU.
         """
@@ -243,7 +243,7 @@ class IpmiLibrary:
         value.
 
         `poll_interval` is given in Robot Framework's time format.
-        
+
         The old poll interval is returend.
 
         For more details see `Set Timeout`.
@@ -264,7 +264,7 @@ class IpmiLibrary:
 
     def fetch_sel(self):
         """Fetches the sensor event log.
-        
+
         Fetching the SEL is required for all further operation on the SEL.
 
         See `Sel Should Contain X Times Sensor Type`, `Select Sel Record By
@@ -355,13 +355,13 @@ class IpmiLibrary:
 
     def select_sel_record_by_sensor_type(self, type, index=1):
         """Selects a SEL record.
-        
+
         Selected SEL records can be further examined by the `Selected SEL
         Records X`.
 
         `type` can be either a string or a number. See `Wait Until SEL Contains
         Sensor Type` for an example.
-        
+
         If more than one entry match `index` can be used to select the
         subsequent ones. `index` can also be negative, see Python Sequences for
         more details on this.
@@ -527,7 +527,7 @@ class IpmiLibrary:
         if not sensor:
             raise RuntimeError('No sensor found with name "%s"' % name)
         return sensor[3]
-    
+
     def get_sensor_threshold(self, name, threshold):
         """Returns the current threshold for a sensor.
 
@@ -546,9 +546,9 @@ class IpmiLibrary:
         thresholds = self._get_sensor_thresholds(name)
         if not thresholds:
             raise RuntimeError('No thresholds for sensor with name "%s"' % name)
-        
+
         try:
-            return thresholds[threshold] 
+            return thresholds[threshold]
         except KeyError:
             raise RuntimeError('Threshold "%s" not found for sensor "%s"' %
                     (threshold, name))
@@ -585,7 +585,7 @@ class IpmiLibrary:
 
         `name` is the sensor ID string. See also `Get Sensor Reading`.
         """
-        
+
         name = str(name)
         state = int_any_base(state)
 
@@ -604,7 +604,7 @@ class IpmiLibrary:
 
         `name` is the sensor ID string. See also `Get Sensor Reading`.
         """
-        
+
         name = str(name)
         state = int_any_base(state)
 
@@ -627,7 +627,7 @@ class IpmiLibrary:
         name = str(name)
         threshold = str(threshold)
         value = float(value)
-       
+
         self._run_ipmitool_checked('sensor thresh "%s" "%s" %f' % (name, threshold, value) )
 
     def picmg_get_led_state(self, fru_id, led_id):
@@ -647,7 +647,7 @@ class IpmiLibrary:
         else:
             color = self._led.local_color
         asserts.fail_unless_equal(expected_color, color, msg, values)
-  
+
     def led_function_should_be(self, expected_function, msg=None, values=True):
         expected_function = find_picmg_led_function(expected_function)
         if self._led.override_enabled:
@@ -655,7 +655,7 @@ class IpmiLibrary:
         else:
             function = self._led.local_function
         asserts.fail_unless_equal(expected_function, function, msg, values)
- 
+
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state):
         """Sends the "PICMG Set Portstate" command.
@@ -706,13 +706,13 @@ class IpmiLibrary:
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
         signaling_class = find_picmg_signaling_class(signaling_class)
-        self._active_connection.set_signaling_class(interface, channel, 
+        self._active_connection.set_signaling_class(interface, channel,
                 signaling_class)
 
     def get_signaling_class(self, interface, channel):
         """Sends `Get Channel Signaling Class` command
         """
-        
+
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
         self._active_connection.get_signaling_class(interfac, channel)
@@ -726,24 +726,22 @@ class IpmiLibrary:
         Framework's time format (e.g. 1 minute 20 seconds) that is explained in
         the User Guide.
         """
-        value = utils.timestr_to_secs(value)
-        value = int(value * 10) # convert to 100ms steps 
-        if (value > 0xffff):
+        config = pyipmi.bmc.Watchdog()
+        config.timer_use = pyipmi.bmc.Watchdog.TIMER_USE_SMS_OS
+        config.dont_stop = 1
+        config.dont_log = 0
+        config.pre_timeout_interval = 0
+        config.pre_timeout_interrupt = 0
+        config.timer_use_expiration_flags = 8
+        # convert to 100ms
+        config.initial_countdown = int(utils.timestr_to_secs(value) * 10)
+        if (config.initial_countdown > 0xffff):
             raise RuntimeError('Watchdog value out of range')
-        value_lsb = value & 0xff
-        value_msb = (value >> 8) & 0xff
-        timer_use = 4
-        timer_action = find_watchdog_action(action)
-        pre_timeout_interval = 0
-        timer_use_exp_flags_clear = 8
+        config.timeout_action = find_watchdog_action(action)
         # set watchdog
-        cmd = 'raw 6 0x24 %d %d %d %d %d %d' % \
-            (timer_use, timer_action, pre_timeout_interval, \
-                timer_use_exp_flags_clear, value_lsb, value_msb)
-        self._run_ipmitool_checked(cmd)
+        self._active_connection.set_watchdog_timer(config)
         # start watchdog
-        cmd = 'raw 6 0x22'
-        self._run_ipmitool_checked(cmd)
+        self._active_connection.reset_watchdog_timer()
 
     def hpm_start_firmware_upload(self, file_path, filename):
         """

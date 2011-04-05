@@ -1,5 +1,6 @@
 import pyipmi
 import pyipmi.picmg
+import pyipmi.bmc
 
 import sel
 from utils import find_attribute
@@ -36,10 +37,12 @@ def find_picmg_signaling_class(signaling_class):
             'CHANNEL_SIGNALING_CLASS')
 
 def find_watchdog_action(action):
-    return find_attribute(bmc, action, 'WATCHDOG_TIMEOUT_ACTION')
+    return find_attribute(pyipmi.bmc.Watchdog, action,
+            'TIMEOUT_ACTION')
 
 def find_watchdog_timer_use(timer_use):
-    return find_attribute(bmc, timer_use, 'WATCHDOG_TIMER_USE')
+    return find_attribute(pyipmi.bmc.Watchdog, timer_use,
+            'TIMER_USE')
 
 def find_event_direction(direction):
     return find_attribute(sel, direction, 'EVENT_')
