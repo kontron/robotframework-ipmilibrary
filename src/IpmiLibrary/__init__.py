@@ -58,22 +58,6 @@ class IpmiLibrary:
         self._cache = ConnectionCache()
         self._fru_data = None
 
-    def _rmcp_ping(self, host):
-        # for now this uses impitool..
-        cmd = self.IPMITOOL
-        cmd += (' -I lan')
-        cmd += (' -H %s' % host)
-        cmd += (' -A NONE')
-        cmd += (' session info all')
-
-        self._info('Running command "%s"' % cmd)
-        child = Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
-        child.communicate()
-
-        self._trace('rc = %s' % child.returncode)
-        if child.returncode:
-            raise TimeoutError()
-
     def wait_until_rmcp_is_ready(self, host, timeout=45):
         """Waits until the host can handle RMCP packets.
 
@@ -86,7 +70,7 @@ class IpmiLibrary:
         start_time = time.time()
         while time.time() < start_time + timeout:
             try:
-                self._rmcp_ping(host)
+                self._active_connection.session.rmcp_ping()
                 return
             except TimeoutError:
                 pass
