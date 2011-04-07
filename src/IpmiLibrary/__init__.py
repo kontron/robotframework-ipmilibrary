@@ -182,11 +182,13 @@ class IpmiLibrary:
     def issue_frucontrol_cold_reset(self, fruid=0):
         """Sends a _frucontrol cold reset_ to the given FRU.
         """
+        fruid = int(fruid)
         self._active_connection.fru_control_cold_reset(fruid)
 
     def issue_frucontrol_diagnostic_interrupt(self, fruid=0):
         """Sends a _frucontrol diagnostic interrupt_ to the given FRU.
         """
+        fruid = int(fruid)
         self._active_connection.fru_control_diagnostic_interrupt(fruid)
 
     def issue_chassis_power_down(self):
