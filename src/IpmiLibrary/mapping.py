@@ -15,6 +15,9 @@ def find_picmg_led_color(color):
 def find_picmg_led_function(function):
     return find_attribute(pyipmi.picmg.LedState, function, 'FUNCTION')
 
+def find_sdr_record_type(record_type):
+    return find_attribute(pyipmi.sdr, record_type, 'SDR_TYPE')
+
 # old ones.. should go away/be replaced soon
 def find_picmg_interface_type(interface_type):
     return find_attribute(pyipmi.picmg.LinkInfo, interface_type,

@@ -2,6 +2,7 @@
 # Kontron IpmiLibrary
 #
 # author: Michael Walle <michael.walle@kontron.com>
+# author: Heiko Thiery <heiko.thiery@kontron.com>
 #
 
 import logging
@@ -20,6 +21,8 @@ import pyipmi.interfaces
 
 from utils import int_any_base
 from mapping import *
+
+from sdr import Sdr
 
 class RobotLogHandler(logging.Handler):
     # mappping from logging to robots log levels
@@ -49,14 +52,21 @@ class TimeoutError(Exception):
     pass
 
 
-class IpmiLibrary:
+class IpmiConnection():
     def __init__(self, timeout=3.0, poll_interval=1.0):
-        self._sel_records = []
+        self._ipmi = None
+        self._timeout = timeout
+        self._poll_interval = poll_interval
+        self._sel_record = []
         self._selected_sel_record = None
-        self.set_timeout(timeout)
-        self.set_poll_interval(poll_interval)
-        self._cache = ConnectionCache()
+        self._sdr_list = []
+        self._selected_sdr = None
         self._fru_data = None
+
+
+class IpmiLibrary(Sdr):
+    def __init__(self, timeout=3.0, poll_interval=1.0):
+        self._cache = ConnectionCache()
 
     def wait_until_rmcp_is_ready(self, host, timeout=45):
         """Waits until the host can handle RMCP packets.
@@ -70,7 +80,7 @@ class IpmiLibrary:
         start_time = time.time()
         while time.time() < start_time + timeout:
             try:
-                self._active_connection.session.rmcp_ping()
+                self._active_connection._ipmi.session.rmcp_ping()
                 return
             except TimeoutError:
                 pass
@@ -107,9 +117,12 @@ class IpmiLibrary:
 
         ipmi.session.establish()
 
-        self._active_connection = ipmi
+        connection = IpmiConnection()
+        connection._ipmi = ipmi
 
-        return self._cache.register(ipmi, alias)
+        self._active_connection = connection
+
+        return self._cache.register(connection, alias)
 
     def switch_ipmi_connection(self, index_or_alias):
         """Switches between active connections using an index or alias.
@@ -138,29 +151,64 @@ class IpmiLibrary:
     def close_ipmi_connection(self, loglevel=None):
         """Closes the current connection.
         """
-        self._active_connection.session.close()
+        self._active_connection.ipmi.session.close()
 
     def wait_until_connection_is_ready(self):
+        ac = self._active_connection
         start_time = time.time()
         while time.time() < start_time + self._timeout:
-            output, rc = self._active_connection.interface._run_ipmitool(
-                    self._active_connection.target, 'bmc info')
+            output, rc = ac._ipmi.interface._run_ipmitool(
+                    ac._ipmi.target, 'bmc info')
             if rc != 0:
-                time.sleep(self._poll_interval)
+                time.sleep(ac._poll_interval)
             else:
                 return
 
     def _run_ipmitool_checked(self, cmd):
-        output, rc = self._active_connection.interface._run_ipmitool(
-                self._active_connection.target, cmd)
+        ac = self._active_connection
+        output, rc = ac._ipmi.interface._run_ipmitool(
+                ac._ipmi.target, cmd)
         if rc != 0:
             raise AssertionError('return code was %d' % rc)
         return output
 
+    def set_timeout(self, timeout):
+        """Sets the timeout used in `Wait Until X` keywords to the given value.
+
+        `timeout` is given in Robot Framework's time format
+        (e.g. 1 minute 20 seconds) that is explained in the User Guide.
+
+        The old timeout is returned and can be used to restore it later.
+
+        Example.
+        | ${tout}= | Set Timeout | 2 minute 30 seconds |
+        | Do Something |
+        | Set Timeout | ${tout} |
+        """
+        ac = self._active_connection
+        old = getattr(self, '_timeout', 3.0)
+        ac._timeout = utils.timestr_to_secs(timeout)
+        return utils.secs_to_timestr(old)
+
+    def set_poll_interval(self, poll_interval):
+        """Sets the poll interval used in `Wait Until X` keywords to the given
+        value.
+
+        `poll_interval` is given in Robot Framework's time format.
+
+        The old poll interval is returend.
+
+        For more details see `Set Timeout`.
+        """
+        ac = self._active_connection
+        old = getattr(self, '_poll_interval', 1.0)
+        ac._poll_interval = utils.timestr_to_secs(poll_interval)
+        return utils.secs_to_timestr(old)
+
     def issue_bmc_cold_reset(self):
         """Sends a _bmc cold reset_ to the given controler.
         """
-        self._active_connection.cold_reset()
+        self._active_connection._ipmi.cold_reset()
 
     def get_bmc_device_id(self):
         """Sends a _bmc get device id_ command to the given controler.
@@ -171,40 +219,40 @@ class IpmiLibrary:
         """Clears the activation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.clear_fru_activation_lock(fruid)
+        self._active_connection._ipmi.clear_fru_activation_lock(fruid)
 
     def clear_deactivation_lock_bit(self, fruid=0):
         """Clears the deactivation lock bit for to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.clear_fru_deactivation_lock(fruid)
+        self._active_connection._ipmi.clear_fru_deactivation_lock(fruid)
 
     def issue_frucontrol_cold_reset(self, fruid=0):
         """Sends a _frucontrol cold reset_ to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.fru_control_cold_reset(fruid)
+        self._active_connection._ipmi.fru_control_cold_reset(fruid)
 
     def issue_frucontrol_diagnostic_interrupt(self, fruid=0):
         """Sends a _frucontrol diagnostic interrupt_ to the given FRU.
         """
         fruid = int(fruid)
-        self._active_connection.fru_control_diagnostic_interrupt(fruid)
+        self._active_connection._ipmi.fru_control_diagnostic_interrupt(fruid)
 
     def issue_chassis_power_down(self):
         """Sends a _chassis power down_ command.
         """
-        self._active_connection.chassis_control_power_down()
+        self._active_connection._ipmi.chassis_control_power_down()
 
     def issue_chassis_power_cycle(self):
         """Sends a _chassis power cycle_.
         """
-        self._active_connection.chassis_control_power_cycle()
+        self._active_connection._ipmi.chassis_control_power_cycle()
 
     def issue_chassis_power_reset(self):
         """Sends a _chassis power reset_.
         """
-        self._active_connection.chassis_control_hard_reset()
+        self._active_connection._ipmi.chassis_control_hard_reset()
 
     def set_timeout(self, timeout):
         """Sets the timeout used in `Wait Until X` keywords to the given value.
@@ -242,6 +290,7 @@ class IpmiLibrary:
         """Clears the sensor event log."""
 
         self._run_ipmitool_checked('sel clear')
+        time.sleep(2.0)
 
     def log_sel(self):
         """Dumps the sensor event log and logs it."""
@@ -256,22 +305,24 @@ class IpmiLibrary:
         See `Sel Should Contain X Times Sensor Type`, `Select Sel Record By
         Sensor Type` and `Wait Until Sel Contains Sensor Type`.
         """
-        del self._sel_records[:]
+        ac = self._active_connection
+        del ac._sel_records[:]
         output = self._run_ipmitool_checked('sel list -vv')
         for line in output.split('\n'):
             if line.startswith('SEL Entry: '):
                 hexdata = line[11:].strip()
                 record = SelRecord()
                 record.decode_hex(hexdata)
-                self._sel_records.append(record)
+                ac._sel_records.append(record)
 
         print '*DEBUG* Parsed SEL Records (%d)' % len(self._sel_records)
-        for record in self._sel_records:
+        for record in ac._sel_records:
             print record
 
     def _find_sel_records_by_sensor_type(self, type):
+        ac = self._active_connection
         matches = []
-        for record in self._sel_records:
+        for record in ac._sel_records:
             if record.sensor_type == type:
                 matches.append(record)
         return matches
@@ -279,8 +330,9 @@ class IpmiLibrary:
     def sel_should_contain_x_entries(self, count, msg=None):
         """Fails if the SEL does not contain `count` entries.
         """
+        ac = self._active_connection
         count = int(count)
-        asserts.fail_unless_equal(count, len(self._sel_records), msg)
+        asserts.fail_unless_equal(count, len(ac._sel_records), msg)
 
     def sel_should_contain_x_times_sensor_type(self, type, count, msg=None):
         """Fails if the SEL does not contain `count` times an event with the
@@ -303,8 +355,8 @@ class IpmiLibrary:
             raise AssertionError('SEL contains sensor type %s' % type)
 
     def wait_until_sel_contains_x_times_sensor_type(self, count, type):
+        ac = self._active_connection
         type = find_sensor_type(type)
-
         count = int(count)
 
         start_time = time.time()
@@ -312,12 +364,12 @@ class IpmiLibrary:
             self.fetch_sel()
             records = self._find_sel_records_by_sensor_type(type)
             if len(records) >= count:
-                self._selected_sel_record = records[0]
+                ac._selected_sel_record = records[0]
                 return
-            time.sleep(self._poll_interval)
+            time.sleep(ac._poll_interval)
 
         raise AssertionError('No match found for SEL record type "%s" in %s.'
-                % (type, utils.secs_to_timestr(self._timeout)))
+                % (type, utils.secs_to_timestr(ac._timeout)))
 
 
     def wait_until_sel_contains_sensor_type(self, type):
@@ -374,7 +426,7 @@ class IpmiLibrary:
         try:
             if index > 0:
                 index -= 1
-            self._selected_sel_record = records[index]
+            self._active_connection._selected_sel_record = records[index]
         except IndexError:
             raise AssertionError(
                     'Only %d SEL records found with sensor type "%s"' %
@@ -396,7 +448,7 @@ class IpmiLibrary:
 
         # apply mask
         expected_value = expected_value & mask
-        value = self._selected_sel_record.event_data & mask
+        value = self._active_connection._selected_sel_record.event_data & mask
 
         if not self._selected_sel_record:
             raise RuntimeError('No SEL record selected.')
@@ -406,7 +458,7 @@ class IpmiLibrary:
             expected_direction, msg=None):
         direction = find_event_direction(expected_direction)
         asserts.fail_unless_equal(direction,
-                self._selected_sel_record.event_direction, msg)
+                self._active_connection._selected_sel_record.event_direction, msg)
 
     def selected_sel_record_should_be_from_sensor_number(self, sensor_number,
              msg=None):
@@ -418,191 +470,6 @@ class IpmiLibrary:
             raise RuntimeError('No SEL record selected.')
         asserts.fail_unless_equal(sensor_number,
                 self._selected_sel_record.sensor_number, msg)
-
-    def _get_sensor_list(self):
-        output = self._run_ipmitool_checked('sensor list')
-        sensor_list = []
-        for line in output.split('\n'):
-            # skip empty lines
-            if not line.strip():
-                continue
-
-            data = line.split('|', 10)
-            # skip not matching line
-            if len(data) != 10:
-                continue
-
-            name = data[0].strip()
-            type = data[2].strip()
-
-
-            if (type == 'discrete'):
-                try:
-                    value = int(data[1].strip(), 16)
-                except ValueError:
-                    value = None
-                try:
-                    state = int(data[3].strip(), 16)
-                    # swap bytes and mask MSB
-                    state = ((state >> 8) & 0xff) | ((state << 16) & 0xff)
-                except ValueError:
-                    state = None
-                thresholds = None
-            else:
-                thresholds = {}
-                # get sensor reading
-                try:
-                    value = float(data[1].strip())
-                except ValueError:
-                    value = None
-
-                # get sensor state
-                state = data[3].strip()
-                if state == "na":
-                    state = None
-
-                # get sensor thresholds
-                #for (i, t) in enumerate(('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'), start=4):
-                for (i, t) in enumerate(('lnr', 'lcr', 'lnc', 'unc', 'ucr',
-                        'unr')):
-                    try:
-                        thresholds[t] = float(data[i+4].strip())
-                    except ValueError:
-                        pass
-
-            sensor_list.append((name, value, state, thresholds))
-            self._trace('sensor "%s" value "%s" state "%s" threshs "%s"' %
-                    (name, value, state, thresholds))
-
-        return sensor_list
-
-    def _find_sensor_by_name(self, name):
-        sensors = self._get_sensor_list()
-        for sensor in sensors:
-            if sensor[0] == name:
-                return sensor
-
-    def get_sensor_reading(self, name):
-        """Returns a sensor reading.
-
-        `name` is the sensor ID string given in the SDR.
-        """
-
-        name = str(name)
-
-        sensor = self._find_sensor_by_name(name)
-        if not sensor:
-            raise RuntimeError('No sensor found with name "%s"' % name)
-        return sensor[1]
-
-    def get_sensor_state(self, name):
-        """Returns the assertion state of a sensor.
-
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
-        """
-        name = str(name)
-
-        sensor = self._find_sensor_by_name(name)
-        if not sensor:
-            raise RuntimeError('No sensor found with name "%s"' % name)
-        return sensor[2]
-
-    def _get_sensor_thresholds(self, name):
-        name = str(name)
-        sensor =  self._find_sensor_by_name(name)
-        if not sensor:
-            raise RuntimeError('No sensor found with name "%s"' % name)
-        return sensor[3]
-
-    def get_sensor_threshold(self, name, threshold):
-        """Returns the current threshold for a sensor.
-
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
-
-        `threshold` can be one of the following strings: "lnr", "lcr", "lnc",
-        "unc", "ucr", "unr".
-
-        Example:
-        | ${threshold}= | Get Sensor Threshold | Vcc +12V | lnr |
-
-        """
-
-        name = str(name)
-        treshold = str(threshold).lower()
-        thresholds = self._get_sensor_thresholds(name)
-        if not thresholds:
-            raise RuntimeError('No thresholds for sensor with name "%s"' % name)
-
-        try:
-            return thresholds[threshold]
-        except KeyError:
-            raise RuntimeError('Threshold "%s" not found for sensor "%s"' %
-                    (threshold, name))
-
-    def sensor_should_be_present(self, name):
-        """Fails if the sensor is not present
-        """
-        sensor = self._find_sensor_by_name(name)
-        if not sensor:
-            raise RuntimeError('No sensor found with name "%s"' % name)
-
-    def sensor_value_should_be(self, name, expected_value, msg=None):
-        """Fails unless the sensor value has the expected value.
-
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
-        """
-
-        expected_value = int_any_base(expected_value)
-        current_value = self.get_sensor_value(name)
-        asserts.fail_unless_equal(expected_value, current_value, msg)
-
-    def sensor_state_should_be(self, name, expected_state, msg=None):
-        """Fails unless the sensor state has the expected state.
-
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
-        """
-
-        expected_state = int_any_base(expected_state)
-        current_state = self.get_sensor_state(name)
-        asserts.fail_unless_equal(expected_state, current_state, msg)
-
-    def wait_until_sensor_state_is(self, name, state):
-        """Wait until a sensor reaches the given state.
-
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
-        """
-
-        name = str(name)
-        state = int_any_base(state)
-
-        start_time = time.time()
-        while time.time() < start_time + self._timeout:
-            current_state = self.get_sensor_state(name)
-            if current_state == state:
-                return
-            time.sleep(self._poll_interval)
-
-        raise AssertionError('Sensor "%s" did not reach the state "%s" in %s.'
-                % (name, state, utils.secs_to_timestr(self._timeout)))
-
-    def wait_until_sensor_value_is(self, name, value):
-        """Wait until a sensor reaches the given value.
-
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
-        """
-
-        name = str(name)
-        state = int_any_base(state)
-
-        start_time = time.time()
-        while time.time() < start_time + self._timeout:
-            current_value = self.get_sensor_value(name)
-            if current_value == value:
-                return
-            time.sleep(self._poll_interval)
-
-        raise AssertionError('Sensor "%s" did not reach the value "%s" in %s.'
-                % (name, state, utils.secs_to_timestr(self._timeout)))
 
     def set_sensor_threshold(self, name, threshold, value):
         """Sets the threshold of a sensor.
@@ -619,27 +486,31 @@ class IpmiLibrary:
     def picmg_get_led_state(self, fru_id, led_id):
         """Returns the FRU LED state.
         """
+        ac = self._active_connection
+
         fru_id = int(fru_id)
         led_id = int(led_id)
 
-        self._led = self._active_connection.get_led_state(fru_id, led_id)
+        ac._led = ac.ipmi.get_led_state(fru_id, led_id)
 
-        self._debug('LED state %s' % self._led)
+        self._debug('LED state %s' % ac._led)
 
     def led_color_should_be(self, expected_color, msg=None, values=True):
+        ac = self._active_connection
         expected_color = find_picmg_led_color(expected_color)
-        if self._led.override_enabled:
-            color = self._led.override_color
+        if ac._led.override_enabled:
+            color = ac._led.override_color
         else:
-            color = self._led.local_color
+            color = ac._led.local_color
         asserts.fail_unless_equal(expected_color, color, msg, values)
 
     def led_function_should_be(self, expected_function, msg=None, values=True):
+        ac = self._active_connection
         expected_function = find_picmg_led_function(expected_function)
-        if self._led.override_enabled:
-            function = self._led.override_function
+        if ac._led.override_enabled:
+            function = ac._led.override_function
         else:
-            function = self._led.local_function
+            function = ac._led.local_function
         asserts.fail_unless_equal(expected_function, function, msg, values)
 
     def set_port_state(self, interface, channel, flags, link_type,
@@ -667,6 +538,7 @@ class IpmiLibrary:
         Example:
         | Set Port State | BASE | 1 | LANE0 | BASE | BASE0 | ENABLE
         """
+        ac = self._active_connection
 
         link_info = pyipmi.picmg.LinkInfo()
         link_info.interface = find_picmg_interface_type(interface)
@@ -676,7 +548,7 @@ class IpmiLibrary:
         link_info.extension = find_picmg_link_type_extension(link_type_ext)
         link_info.state = find_picmg_link_state(state)
         link_info.grouping_id = 0
-        self._active_connection.set_port_state(link_info)
+        ac._ipmi.set_port_state(link_info)
 
     def set_signaling_class(self, interface, channel, signaling_class):
         """Sends the `Set Channel Siganling Class` command.
@@ -688,20 +560,21 @@ class IpmiLibrary:
         `class` is the channel signaling class capability and hast to be one of
         the following values: CLASS_BASIC, CLASS_10_3125GBD.
         """
+        ac = self._active_connection
 
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
         signaling_class = find_picmg_signaling_class(signaling_class)
-        self._active_connection.set_signaling_class(interface, channel,
-                signaling_class)
+        ac._ipmi.set_signaling_class(interface, channel, signaling_class)
 
     def get_signaling_class(self, interface, channel):
         """Sends `Get Channel Signaling Class` command
         """
+        ac = self._active_connection
 
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
-        self._active_connection.get_signaling_class(interfac, channel)
+        ac._ipmi.get_signaling_class(interfac, channel)
 
     def start_watchdog_timer(self, value, action):
         """Sets and starts IPMI watchdog timer.
@@ -712,6 +585,8 @@ class IpmiLibrary:
         Framework's time format (e.g. 1 minute 20 seconds) that is explained in
         the User Guide.
         """
+        ac = self._active_connection
+
         config = pyipmi.bmc.Watchdog()
         config.timer_use = pyipmi.bmc.Watchdog.TIMER_USE_SMS_OS
         config.dont_stop = 1
@@ -725,9 +600,9 @@ class IpmiLibrary:
             raise RuntimeError('Watchdog value out of range')
         config.timeout_action = find_watchdog_action(action)
         # set watchdog
-        self._active_connection.set_watchdog_timer(config)
+        ac._ipmi.set_watchdog_timer(config)
         # start watchdog
-        self._active_connection.reset_watchdog_timer()
+        ac._ipmi.reset_watchdog_timer()
 
     def hpm_start_firmware_upload(self, file_path, filename):
         """
@@ -769,36 +644,39 @@ class IpmiLibrary:
         Fetching the FRU data is required for all further operation on the FRU
          data
         """
-        self._fru_data = self._active_connection.read_fru_data(fru_id)
+        ac = self._active_connection
+        ac._fru_data = ac._ipmi.read_fru_data(fru_id)
 
     def fru_data_byte_at_offset_should_be(self, offset, value, msg=None):
         """Fails if the FRU data does not contain `value` at the given `offset`
         """
+        ac = self._active_connection
         offset = int_any_base(offset)
         value = int_any_base(value)
 
-        if self._fru_data is None:
+        if ac_fru_data is None:
             self.fetch_fru_data()
 
-        asserts.fail_unless_equal(value, ord(self._fru_data.data[offset]), msg)
+        asserts.fail_unless_equal(value, ord(ac._fru_data.data[offset]), msg)
 
     def fru_data_bytes_at_offset_should_be(self, offset, length,
                 value_expected, msg=None, order='lsb'):
         """Fails if the FRU data does not contain `value` at the given `offset`
         """
+        ac = self._active_connection
         offset = int_any_base(offset)
         length = int_any_base(length)
         value_expected = int_any_base(value_expected)
 
-        if self._fru_data is None:
+        if ac._fru_data is None:
             self.fetch_fru_data()
 
         value = 0
         if order == 'lsb':
-            for v in self._fru_data.data[offset+length-1:offset-1:-1]:
+            for v in ac._fru_data.data[offset+length-1:offset-1:-1]:
                 value = (value << 8) + ord(v)
         elif order == 'msb':
-            for v in self._fru_data.data[offset:offset+length]:
+            for v in ac._fru_data.data[offset:offset+length]:
                 value = (value << 8) + ord(v)
         else:
             raise RuntimeError('Unknown order')
@@ -807,28 +685,29 @@ class IpmiLibrary:
 
     def fru_data_tlv_at_offset_should_be(self, offset, expected_type,
                 expected_length, expected_value, msg=None):
+        ac = self._active_connection
         offset = int_any_base(offset)
         expected_type = find_fru_field_type_code(expected_type)
         expected_length = int_any_base(expected_length)
 
-        if self._fru_data is None:
+        if ac._fru_data is None:
             self.fetch_fru_data()
 
-        type = (ord(self._fru_data.data[offset]) & 0xc0) >> 6
+        type = (ord(ac._fru_data.data[offset]) & 0xc0) >> 6
         asserts.fail_unless_equal(expected_type, type, 'type missmatch')
 
-        length = ord(self._fru_data.data[offset]) & 0x3f
+        length = ord(ac._fru_data.data[offset]) & 0x3f
         asserts.fail_unless_equal(expected_length, length, 'length missmatch')
 
         value = None
         if expected_type == 0:
             expected_value = int_any_base(expected_value)
-            slice = self._fru_data.data[offset+1:offset+length+1]
+            slice = ac._fru_data.data[offset+1:offset+length+1]
             value = 0
             for v in slice:
                 value = (value << 8) + ord(v)
         elif expected_type == 3:
-            value = self._fru_data.data[offset+1:offset+length+1]
+            value = ac._fru_data.data[offset+1:offset+length+1]
         else:
             raise RuntimeError('type %s not supported' % expected_type)
 
