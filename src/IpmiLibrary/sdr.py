@@ -20,13 +20,22 @@ class Sdr:
     def __init__(self):
         pass
 
+    def log_sdr_list(self):
+        ac = self._active_connection
+
+        if len(ac._sdr_list) == 0:
+            self.fetch_sdr_list()
+
+        for sdr in ac._sdr_list:
+            self._trace('%s' % sdr)
+
     def fetch_sdr_list(self):
         ac = self._active_connection
         del ac._sdr_list[:]
         self._trace('fetch SDR list')
         ac._sdr_list = ac._ipmi.get_sdr_list()
         for sdr in ac._sdr_list:
-            self._trace('ID=%04x string=%s' % (sdr.id, sdr.device_id_string))
+            self._trace('ID=%04x STRING=%s' % (sdr.id, sdr.device_id_string))
 
     def _find_sdr_by_name(self, name):
         name = str(name)
@@ -41,7 +50,7 @@ class Sdr:
 
         for sdr in ac._sdr_list:
            self._trace('ID=%04x string=%s' % (sdr.id, sdr.device_id_string))
-        raise AssertionError('SDR with name "%s" not found list' % (name))
+        raise AssertionError('SDR with name "%s" not found in list' % (name))
 
     def _find_sdr_by_record_id(self, sdr_id):
         sdr_id = int_any_base(sdr_id)
@@ -53,7 +62,7 @@ class Sdr:
         for sdr in ac._sdr_list:
             if sdr.id == sdr_id:
                 return sdr
-        raise AssertionError('SDR with ID "%x" no found' % sdr_id)
+        raise AssertionError('SDR with ID "%x" not found' % sdr_id)
 
     def select_sdr_by_name(self, name):
         """
@@ -111,11 +120,47 @@ class Sdr:
         self.sensor_reading_should_be_equal(sdr.device_id_string,
                 expected_reading, msg=None)
 
+    def selected_sdr_entity_id_should_be(self, entity_id, msg=None):
+        """
+        `entity_id` possible ids are:
+
+        Power Module
+        Cooling Unit
+        PICMG Front Board
+        PICMG Rear Transition Module
+        PICMG Advanced MC
+        PICMG Microtca Carrier Hub
+        PICMG Shelf Management Controller
+        PICMG Filtration Unit
+        PICMG Shelf Fru Information
+        """
+        ac = self._active_connection
+        entity_id = find_entity_type_id(entity_id)
+        asserts.fail_unless_equal(entity_id, ac._selected_sdr.entity_id)
+
+    def selected_sdr_type_should_be(self, sdr_type, msg=None):
+        """Fails if the selected SDR is not from specified type
+
+        `sdr_type` possible types are:
+
+        Full Sensor Record
+        Compact Sensor Record
+        Entity Association Record
+        Fru Device Locator Record
+        Management Controller Device Locator Record
+        Management Controller Confirmation Record
+        BMC Message Channel Info Record
+        """
+        ac = self._active_connection
+        sdr_type = find_sdr_record_type(sdr_type)
+        asserts.fail_unless_equal(sdr_type, ac._selected_sdr.type)
+
     def sensor_value_should_be_equal(self, name, expected_value,
             mask=0x7fff, msg=None):
         """
         """
         expected_value = int_any_base(expected_value)
+        mask = int_any_base(mask)
         ac = self._active_connection
 
         sdr = self._find_sdr_by_name(name)
@@ -144,6 +189,28 @@ class Sdr:
         if not sdr:
             raise RuntimeError('No sensor found with name "$s"' % name)
 
+    def get_sdr_instance(self, name):
+        """Returns the SDR object instance of the SDR.
+        """
+        name = str(name)
+        sdr = self._find_sdr_by_name(name)
+        return sdr
+
+    def get_sensor_number(self, name):
+        """Returns the sensor number for the given SDR name.
+
+        `name` is the sensor ID string given in the SDR
+        """
+        name = str(name)
+        ac = self._active_connection
+
+        sdr = self._find_sdr_by_name(name)
+        if sdr.number:
+            sensor_number = sdr.number
+            return sensor_number
+        else:
+            raise RuntimeError('SDR "%s" has no sensor number' % name)
+
     def get_sensor_reading(self, name):
         """Returns a sensor reading.
 
@@ -165,6 +232,7 @@ class Sdr:
         ac = self._active_connection
 
         sdr = self._find_sdr_by_name(name)
+        self._trace("%s, %d" % (sdr.device_id_string, sdr.number))
         (raw, states) = ac._ipmi.get_sensor_reading(sdr.number)
         return states
 
