@@ -1,6 +1,7 @@
 import pyipmi
 import pyipmi.picmg
 import pyipmi.bmc
+import pyipmi.constants
 
 import sel
 from utils import find_attribute
@@ -17,6 +18,9 @@ def find_picmg_led_function(function):
 
 def find_sdr_record_type(record_type):
     return find_attribute(pyipmi.sdr, record_type, 'SDR_TYPE')
+
+def find_entity_type_id(entity_id):
+    return find_attribute(pyipmi.constants, entity_id, 'ENTITY_TYPE')
 
 # old ones.. should go away/be replaced soon
 def find_picmg_interface_type(interface_type):
