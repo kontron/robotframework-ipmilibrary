@@ -23,6 +23,7 @@ from utils import int_any_base
 from mapping import *
 
 from sdr import Sdr
+from sel import Sel
 
 class RobotLogHandler(logging.Handler):
     # mappping from logging to robots log levels
@@ -57,14 +58,14 @@ class IpmiConnection():
         self._ipmi = None
         self._timeout = timeout
         self._poll_interval = poll_interval
-        self._sel_record = []
+        self._sel_records = []
         self._selected_sel_record = None
         self._sdr_list = []
         self._selected_sdr = None
         self._fru_data = None
 
 
-class IpmiLibrary(Sdr):
+class IpmiLibrary(Sdr, Sel):
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._cache = ConnectionCache()
 
@@ -156,7 +157,7 @@ class IpmiLibrary(Sdr):
     def wait_until_connection_is_ready(self):
         ac = self._active_connection
         start_time = time.time()
-        while time.time() < start_time + self._timeout:
+        while time.time() < start_time + ac._timeout:
             output, rc = ac._ipmi.interface._run_ipmitool(
                     ac._ipmi.target, 'bmc info')
             if rc != 0:
@@ -205,13 +206,30 @@ class IpmiLibrary(Sdr):
         ac._poll_interval = utils.timestr_to_secs(poll_interval)
         return utils.secs_to_timestr(old)
 
+    def ipmi_command_should_return_with_completion_code(self, netfn, lun,
+                command_id, cc, msg=None):
+        """
+        """
+        netfn = int_any_base(netfn)
+        lun = int_any_base(lun)
+        command_id = int_any_base(command_id)
+        cc = int_any_base(cc)
+
+        m = pyipmi.msgs.bmc.RawMessage()
+        m.NETFN = netfn
+        m.LUN = lun
+        m.CMDID = command_id
+
+        self._active_connection._ipmi._send_and_receive(m)
+        asserts.fail_unless_equal(cc, m.rsp.completion_code, msg)
+
     def issue_bmc_cold_reset(self):
         """Sends a _bmc cold reset_ to the given controler.
         """
         self._active_connection._ipmi.cold_reset()
 
     def get_bmc_device_id(self):
-        """Sends a _bmc get device id_ command to the given controler.
+        """Sends a _bmc get device id_ command to the given controller.
         """
         self._run_ipmitool_checked('raw 6 1')
 
@@ -286,44 +304,19 @@ class IpmiLibrary(Sdr):
         self._poll_interval = utils.timestr_to_secs(poll_interval)
         return utils.secs_to_timestr(old)
 
-    def clear_sel(self):
-        """Clears the sensor event log."""
-
-        self._run_ipmitool_checked('sel clear')
-        time.sleep(2.0)
-
-    def log_sel(self):
-        """Dumps the sensor event log and logs it."""
-        output = self._run_ipmitool_checked('sel list -vv')
-        self._info('SEL dump:\n%s' % output)
-
-    def fetch_sel(self):
-        """Fetches the sensor event log.
-
-        Fetching the SEL is required for all further operation on the SEL.
-
-        See `Sel Should Contain X Times Sensor Type`, `Select Sel Record By
-        Sensor Type` and `Wait Until Sel Contains Sensor Type`.
-        """
-        ac = self._active_connection
-        del ac._sel_records[:]
-        output = self._run_ipmitool_checked('sel list -vv')
-        for line in output.split('\n'):
-            if line.startswith('SEL Entry: '):
-                hexdata = line[11:].strip()
-                record = SelRecord()
-                record.decode_hex(hexdata)
-                ac._sel_records.append(record)
-
-        print '*DEBUG* Parsed SEL Records (%d)' % len(self._sel_records)
-        for record in ac._sel_records:
-            print record
-
     def _find_sel_records_by_sensor_type(self, type):
         ac = self._active_connection
         matches = []
         for record in ac._sel_records:
             if record.sensor_type == type:
+                matches.append(record)
+        return matches
+
+    def _find_sel_records_by_sensor_number(self, number):
+        ac = self._active_connection
+        matches = []
+        for record in ac._sel_records:
+            if record.sensor_number == number:
                 matches.append(record)
         return matches
 
@@ -360,7 +353,7 @@ class IpmiLibrary(Sdr):
         count = int(count)
 
         start_time = time.time()
-        while time.time() < start_time + self._timeout:
+        while time.time() < start_time + ac._timeout:
             self.fetch_sel()
             records = self._find_sel_records_by_sensor_type(type)
             if len(records) >= count:
@@ -371,6 +364,23 @@ class IpmiLibrary(Sdr):
         raise AssertionError('No match found for SEL record type "%s" in %s.'
                 % (type, utils.secs_to_timestr(ac._timeout)))
 
+
+    def wait_until_sel_contains_x_times_sensor_number(self, count, number):
+        ac = self._active_connection
+        number = find_sensor_type(number)
+        count = int(count)
+
+        start_time = time.time()
+        while time.time() < start_time + ac._timeout:
+            self.fetch_sel()
+            records = self._find_sel_records_by_sensor_number(number)
+            if len(records) >= count:
+                ac._selected_sel_record = records[0]
+                return
+            time.sleep(ac._poll_interval)
+
+        raise AssertionError('No match found for SEL record from num  "%d" in %s.'
+                % (number, utils.secs_to_timestr(ac._timeout)))
 
     def wait_until_sel_contains_sensor_type(self, type):
         """Wait until the SEL contains at least one record with the given
@@ -432,6 +442,26 @@ class IpmiLibrary(Sdr):
                     'Only %d SEL records found with sensor type "%s"' %
                     (len(records), type))
 
+    def select_sel_record_by_sensor_number(self, number, index=1):
+        number = find_sensor_type(number)
+        index = int(index)
+
+        if index == 0:
+            raise RuntimeError('index must not be zero')
+
+        records = self._find_sel_records_by_sensor_number(number)
+        if len(records) == 0:
+            raise AssertionError(
+                    'No SEL record found from sensor number "%d"' % number)
+        try:
+            if index > 0:
+                index -= 1
+            self._active_connection._selected_sel_record = records[index]
+        except IndexError:
+            raise AssertionError(
+                    'Only %d SEL records found from sensor number "%d"' %
+                    (len(records), number))
+
     def selected_sel_records_event_data_should_be_equal(self, expected_value,
             mask=0xffffff, msg=None):
         """Fails if the event data of the selected SEL record does not match
@@ -445,20 +475,25 @@ class IpmiLibrary(Sdr):
 
         expected_value = int_any_base(expected_value)
         mask = int_any_base(mask)
+        ac = self._active_connection
 
         # apply mask
         expected_value = expected_value & mask
-        value = self._active_connection._selected_sel_record.event_data & mask
+        value = (ac._selected_sel_record.event_data[0] << 16 |
+                 ac._selected_sel_record.event_data[1] << 8 |
+                 ac._selected_sel_record.event_data[2])
+        value = value & mask
 
-        if not self._selected_sel_record:
+        if not ac._selected_sel_record:
             raise RuntimeError('No SEL record selected.')
         asserts.fail_unless_equal(expected_value, value, msg)
 
     def selected_sel_records_event_direction_should_be(self,
             expected_direction, msg=None):
         direction = find_event_direction(expected_direction)
+        ac = self._active_connection
         asserts.fail_unless_equal(direction,
-                self._active_connection._selected_sel_record.event_direction, msg)
+                ac._selected_sel_record.event_direction, msg)
 
     def selected_sel_record_should_be_from_sensor_number(self, sensor_number,
              msg=None):
@@ -607,14 +642,12 @@ class IpmiLibrary(Sdr):
     def hpm_start_firmware_upload(self, file_path, filename):
         """
         """
-
         cmd = 'hpm upgrade %s/%s all' % (file_path, filename)
         self._run_ipmitool_checked(cmd)
 
     def hpm_start_firmware_activation(self):
         """
         """
-
         cmd = 'hpm activate'
         self._run_ipmitool_checked(cmd)
 
@@ -654,7 +687,7 @@ class IpmiLibrary(Sdr):
         offset = int_any_base(offset)
         value = int_any_base(value)
 
-        if ac_fru_data is None:
+        if ac._fru_data is None:
             self.fetch_fru_data()
 
         asserts.fail_unless_equal(value, ord(ac._fru_data.data[offset]), msg)

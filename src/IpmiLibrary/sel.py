@@ -1,4 +1,4 @@
-# 
+#
 # Kontron IpmiLibrary
 #
 # author: Michael Walle <michael.walle@kontron.com>
@@ -63,6 +63,35 @@ SENSOR_TYPE_TELCO_ALARM_INPUT           = 0xF4
 class NotSupportedError(Exception):
     pass
 
+class Sel:
+    def __init__(self):
+        pass
+
+    def fetch_sel(self):
+        """Fetches the sensor event log.
+
+        Fetching the SEL is required for all further operation on the SEL.
+
+        See `Sel Should Contain X Times Sensor Type`, `Select Sel Record By
+        Sensor Type` and `Wait Until Sel Contains Sensor Type`.
+        """
+        ac = self._active_connection
+        del ac._sel_records[:]
+        ac._sel_records = ac._ipmi.get_sel_entries()
+        for r in ac._sel_records:
+            self._info('SEL dump:\n%s' % r)
+
+    def clear_sel(self):
+        """Clears the sensor event log."""
+        ac = self._active_connection
+        ac._ipmi.clear_sel()
+
+    def log_sel(self):
+        """Dumps the sensor event log and logs it."""
+        ac = self._active_connection
+        records = ac._ipmi.get_sel_entries()
+        for r in records:
+            self._info('SEL dump:\n%s' % r)
 
 class SelRecord:
     def decode_hex(self, hexdata):
