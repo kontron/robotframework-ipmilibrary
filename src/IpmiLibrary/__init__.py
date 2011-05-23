@@ -54,10 +54,8 @@ class TimeoutError(Exception):
 
 
 class IpmiConnection():
-    def __init__(self, timeout=3.0, poll_interval=1.0):
-        self._ipmi = None
-        self._timeout = timeout
-        self._poll_interval = poll_interval
+    def __init__(self, ipmi):
+        self._ipmi = ipmi
         self._sel_records = []
         self._selected_sel_record = None
         self._sdr_list = []
@@ -68,6 +66,8 @@ class IpmiConnection():
 class IpmiLibrary(Sdr, Sel):
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._cache = ConnectionCache()
+        self._timeout = timeout
+        self._poll_interval = poll_interval
 
     def wait_until_rmcp_is_ready(self, host, timeout=45):
         """Waits until the host can handle RMCP packets.
@@ -118,8 +118,7 @@ class IpmiLibrary(Sdr, Sel):
 
         ipmi.session.establish()
 
-        connection = IpmiConnection()
-        connection._ipmi = ipmi
+        connection = IpmiConnection(ipmi)
 
         self._active_connection = connection
 
@@ -157,11 +156,11 @@ class IpmiLibrary(Sdr, Sel):
     def wait_until_connection_is_ready(self):
         ac = self._active_connection
         start_time = time.time()
-        while time.time() < start_time + ac._timeout:
+        while time.time() < start_time + self._timeout:
             output, rc = ac._ipmi.interface._run_ipmitool(
                     ac._ipmi.target, 'bmc info')
             if rc != 0:
-                time.sleep(ac._poll_interval)
+                time.sleep(self._poll_interval)
             else:
                 return
 
@@ -188,7 +187,7 @@ class IpmiLibrary(Sdr, Sel):
         """
         ac = self._active_connection
         old = getattr(self, '_timeout', 3.0)
-        ac._timeout = utils.timestr_to_secs(timeout)
+        self._timeout = utils.timestr_to_secs(timeout)
         return utils.secs_to_timestr(old)
 
     def set_poll_interval(self, poll_interval):
@@ -203,7 +202,7 @@ class IpmiLibrary(Sdr, Sel):
         """
         ac = self._active_connection
         old = getattr(self, '_poll_interval', 1.0)
-        ac._poll_interval = utils.timestr_to_secs(poll_interval)
+        self._poll_interval = utils.timestr_to_secs(poll_interval)
         return utils.secs_to_timestr(old)
 
     def ipmi_command_should_return_with_completion_code(self, netfn, lun,
@@ -353,16 +352,16 @@ class IpmiLibrary(Sdr, Sel):
         count = int(count)
 
         start_time = time.time()
-        while time.time() < start_time + ac._timeout:
+        while time.time() < start_time + self._timeout:
             self.fetch_sel()
             records = self._find_sel_records_by_sensor_type(type)
             if len(records) >= count:
                 ac._selected_sel_record = records[0]
                 return
-            time.sleep(ac._poll_interval)
+            time.sleep(self._poll_interval)
 
         raise AssertionError('No match found for SEL record type "%s" in %s.'
-                % (type, utils.secs_to_timestr(ac._timeout)))
+                % (type, utils.secs_to_timestr(self._timeout)))
 
 
     def wait_until_sel_contains_x_times_sensor_number(self, count, number):
@@ -371,16 +370,16 @@ class IpmiLibrary(Sdr, Sel):
         count = int(count)
 
         start_time = time.time()
-        while time.time() < start_time + ac._timeout:
+        while time.time() < start_time + self._timeout:
             self.fetch_sel()
             records = self._find_sel_records_by_sensor_number(number)
             if len(records) >= count:
                 ac._selected_sel_record = records[0]
                 return
-            time.sleep(ac._poll_interval)
+            time.sleep(self._poll_interval)
 
         raise AssertionError('No match found for SEL record from num  "%d" in %s.'
-                % (number, utils.secs_to_timestr(ac._timeout)))
+                % (number, utils.secs_to_timestr(self._timeout)))
 
     def wait_until_sel_contains_sensor_type(self, type):
         """Wait until the SEL contains at least one record with the given
