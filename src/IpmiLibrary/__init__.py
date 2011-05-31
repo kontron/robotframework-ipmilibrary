@@ -62,6 +62,8 @@ class IpmiConnection():
         self._selected_sdr = None
         self._fru_data = None
 
+    def close(self):
+        self._ipmi.session.close()
 
 class IpmiLibrary(Sdr, Sel):
     def __init__(self, timeout=3.0, poll_interval=1.0):
