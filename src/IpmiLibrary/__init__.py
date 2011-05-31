@@ -234,6 +234,16 @@ class IpmiLibrary(Sdr, Sel):
         """
         self._run_ipmitool_checked('raw 6 1')
 
+    def activate_fru(self, fruid=0):
+        """Sends a _Set FRU Activation_ command to the given fru."""
+        fruid = int(fruid)
+        self._active_connection._ipmi.set_fru_activation(fruid)
+
+    def deactivate_fru(self, fruid=0):
+        """Sends a _Set FRU Deactivation_ command to the given fru."""
+        fruid = int(fruid)
+        self._active_connection._ipmi.set_fru_deactivation(fruid)
+
     def clear_activation_lock_bit(self, fruid=0):
         """Clears the activation lock bit for to the given FRU.
         """
