@@ -279,16 +279,16 @@ class Sdr:
         ac = self._active_connection
 
         start_time = time.time()
-        while time.time() < start_time + ac._timeout:
+        while time.time() < start_time + self._timeout:
             current_state = self.get_sensor_state(name)
             if current_state & mask == state & mask:
                 self._trace('waited %s seconds until state "%s" was reached'
                         % (time.time()-start_time, state))
                 return
-            time.sleep(ac._poll_interval)
+            time.sleep(self._poll_interval)
 
         raise AssertionError('Sensor "%s" did not reach the state "%s" in %s.'
-                % (name, state, utils.secs_to_timestr(ac._timeout)))
+                % (name, state, utils.secs_to_timestr(self._timeout)))
 
     def wait_until_sensor_value_is(self, name, value):
         """Wait until a sensor reaches the given value.
@@ -300,13 +300,13 @@ class Sdr:
         ac = self._active_connection
 
         start_time = time.time()
-        while time.time() < start_time + ac._timeout:
+        while time.time() < start_time + self._timeout:
             current_value = self.get_sensor_reading(name)
             if current_value == value:
                 self._trace('waited %s seconds until value "%s" was reached'
                         % (time.time()-start_time, value))
                 return
-            time.sleep(ac._poll_interval)
+            time.sleep(self._poll_interval)
 
         raise AssertionError('Sensor "%s" did not reach the value "%s" in %s.'
-                % (name, state, utils.secs_to_timestr(ac._timeout)))
+                % (name, state, utils.secs_to_timestr(self._timeout)))
