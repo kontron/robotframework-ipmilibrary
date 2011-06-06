@@ -14,7 +14,23 @@ class Bmc:
     def get_bmc_device_id(self):
         """Sends a _bmc get device id_ command to the given controller.
         """
-        raise NotImplementedError()
+        device_id = self._ipmi.get_device_id()
+
+    def product_id_should_be(self, product_id):
+        """Fails if the GetDeviceID command response does not contain
+        the given `device_id`.
+        """
+        product_id = int_any_base(product_id)
+        device_id = self._ipmi.get_device_id()
+        asserts.fail_unless_equal(device_id.product_id, product_id)
+
+    def manufacturer_id_should_be(self, manufacturer_id):
+        """Fails if the GetDeviceID command response does not contain
+        the given `manufacturer_id`.
+        """
+        manufacturer_id = int_any_base(manufacturer_id)
+        device_id = self._ipmi.get_device_id()
+        asserts.fail_unless_equal(device_id.manufacturer_id, manufacturer_id)
 
     def start_watchdog_timer(self, value, action):
         """Sets and starts IPMI watchdog timer.
