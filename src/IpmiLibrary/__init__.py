@@ -701,7 +701,7 @@ class IpmiLibrary(Sdr, Sel):
         if ac._fru_data is None:
             self.fetch_fru_data()
 
-        asserts.fail_unless_equal(value, ord(ac._fru_data.data[offset]), msg)
+        asserts.fail_unless_equal(value, ord(ac._fru_data.raw[offset]), msg)
 
     def fru_data_bytes_at_offset_should_be(self, offset, length,
                 value_expected, msg=None, order='lsb'):
@@ -717,10 +717,10 @@ class IpmiLibrary(Sdr, Sel):
 
         value = 0
         if order == 'lsb':
-            for v in ac._fru_data.data[offset+length-1:offset-1:-1]:
+            for v in ac._fru_data.raw[offset+length-1:offset-1:-1]:
                 value = (value << 8) + ord(v)
         elif order == 'msb':
-            for v in ac._fru_data.data[offset:offset+length]:
+            for v in ac._fru_data.raw[offset:offset+length]:
                 value = (value << 8) + ord(v)
         else:
             raise RuntimeError('Unknown order')
@@ -737,21 +737,21 @@ class IpmiLibrary(Sdr, Sel):
         if ac._fru_data is None:
             self.fetch_fru_data()
 
-        type = (ord(ac._fru_data.data[offset]) & 0xc0) >> 6
+        type = (ord(ac._fru_data.raw[offset]) & 0xc0) >> 6
         asserts.fail_unless_equal(expected_type, type, 'type missmatch')
 
-        length = ord(ac._fru_data.data[offset]) & 0x3f
+        length = ord(ac._fru_data.raw[offset]) & 0x3f
         asserts.fail_unless_equal(expected_length, length, 'length missmatch')
 
         value = None
         if expected_type == 0:
             expected_value = int_any_base(expected_value)
-            slice = ac._fru_data.data[offset+1:offset+length+1]
+            slice = ac._fru_data.raw[offset+1:offset+length+1]
             value = 0
             for v in slice:
                 value = (value << 8) + ord(v)
         elif expected_type == 3:
-            value = ac._fru_data.data[offset+1:offset+length+1]
+            value = ac._fru_data.raw[offset+1:offset+length+1]
         else:
             raise RuntimeError('type %s not supported' % expected_type)
 
