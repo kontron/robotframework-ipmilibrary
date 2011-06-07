@@ -48,7 +48,7 @@ class Bmc:
         config.dont_log = 0
         config.pre_timeout_interval = 0
         config.pre_timeout_interrupt = 0
-        config.timer_use_expiration_flags = 8
+        config.timer_use_expiration_flags = 0xff
         # convert to 100ms
         config.initial_countdown = int(utils.timestr_to_secs(value) * 10)
         if (config.initial_countdown > 0xffff):
@@ -58,5 +58,47 @@ class Bmc:
         self._ipmi.set_watchdog_timer(config)
         # start watchdog
         self._ipmi.reset_watchdog_timer()
+
+    def stop_watchdog_timer(self, msg=None):
+        """Stops the IPMI wachtdog timer.
+        """
+        ac = self._active_connection
+
+        config = pyipmi.bmc.Watchdog()
+        config.timer_use = pyipmi.bmc.Watchdog.TIMER_USE_OEM
+        config.dont_stop = 0
+        config.dont_log = 0
+        config.pre_timeout_interval = 0
+        config.pre_timeout_interrupt = 0
+        # 0xff means clear all expiration flags
+        config.timer_use_expiration_flags = 0xff
+        config.initial_countdown = 0
+        config.timeout_action = pyipmi.bmc.Watchdog.TIMEOUT_ACTION_NO_ACTION
+        ac._ipmi.set_watchdog_timer(config)
+
+    def watchdog_timeout_action_should_be(self, action, msg=None):
+        """Fails if the IPMI Watchdog timeout action is not `action`
+        `action` can be:
+        No Action, Hard Reset, Power Down, Power Cycle
+        """
+        action = find_watchdog_action(action)
+        config = self._active_connection._ipmi.get_watchdog_timer()
+        asserts.fail_unless_equal(action, config.timeout_action, msg)
+
+    def watchdog_timer_use_should_be(self, timer_use, msg=None):
+        """Fails if the IPMI Watchdog timer use is not `timer_use`
+        `timer_use` can be:
+        OEM, SMS OS, OS Load, BIOS POST, BIOS FRB2
+        """
+        timer_use = find_watchdog_timer_use(timer_use)
+        config = self._active_connection._ipmi.get_watchdog_timer()
+        asserts.fail_unless_equal(timer_use, config.timer_use, msg)
+
+    def watchdog_initial_timeout_value_should_be(self, value, msg=None):
+        """
+        """
+        value = int_any_base(value)
+        config = self._active_connection._ipmi.get_watchdog_timer()
+        asserts.fail_unless_equal(value, config.initial_countdown, msg)
 
 
