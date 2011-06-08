@@ -67,8 +67,9 @@ class Fru:
         if expected_type == 0:
             # binary
             expected_data = [int_any_base(d) for d in expected_data.split(' ')]
-
-        expected_data = array.array('B', str(expected_data))
+        else:
+            expected_data = str(expected_data)
+        expected_data = array.array('B', expected_data)
 
         tlv = array.array('B',
                 self._fru_data(fru_id)[offset:offset+len(expected_data)+1])
