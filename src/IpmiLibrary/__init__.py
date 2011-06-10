@@ -248,12 +248,29 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
         value of the list by prepending 'lun=', eg. lun=3.
 
         Example:
-        | ${values}= | Set Variable | 0x06 | 0x01 | |
+        | ${values}= | Create List | 0x06 | 0x01 | |
         | Send Raw Command | ${values} |  |  | | # BMC info command
         | Send Raw Command | 0x06 | 0x01 | | | # same as above
         | Send Raw Command | lun=3 | 0x3e | 0x62 | ... | # LUN other than zero
         """
-        raise NotImplementedError()
+
+        if isinstance(bytes[0], list):
+            bytes = bytes[0]
+
+        lun = 0
+        if len(bytes) > 0 and bytes[0].startswith('lun='):
+            lun = int_any_base(bytes[0][4:])
+            bytes = bytes[1:]
+
+        if len(bytes) < 2:
+            raise RuntimeError('netfn and/or cmdid missing')
+
+        bytes = [ int_any_base(b) for b in bytes ]
+        bytes[0] = bytes[0] << 2 | lun
+        req = ''.join([chr(b) for b in bytes])
+        rsp = self._ipmi.raw_command(req)
+
+        return [ord(b) for b in rsp]
 
     def _warn(self, msg):
         self._log(msg, 'WARN')
