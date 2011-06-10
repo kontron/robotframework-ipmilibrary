@@ -269,6 +269,18 @@ class Sdr:
             raise RuntimeError('Threshold "%s" not found for sensor "%s"' %
                     (threshold, name))
 
+    def set_sensor_threshold(self, name, threshold, value):
+        """Sets the threshold of a sensor.
+
+        For the `name` and `threshold` parameters see `Get Sensor Threshold`.
+        """
+
+        name = str(name)
+        threshold = str(threshold)
+        value = float(value)
+
+        self._run_ipmitool_checked('sensor thresh "%s" "%s" %f' % (name, threshold, value) )
+
     def wait_until_sensor_state_is(self, name, state, mask=0x7fff):
         """Wait until a sensor reaches the given state.
 

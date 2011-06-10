@@ -15,12 +15,11 @@ from mapping import *
 
 class Fru:
     def _fru_data(self, fru_id):
-        ac = self._active_connection
-        if (hasattr(ac, '_prefetched_fru_data')
-                and fru_id in ac._prefetched_fru_data):
-            return ac._prefetched_fru_data[fru_id]
+        if ('prefetched_fru_data' in self._cp
+                and fru_id in self._cp['prefetched_fru_data']):
+            return self._cp['prefetched_fru_data'][fru_id]
         else:
-            return ac._ipmi.read_fru_data(fru_id)
+            return self._ipmi.read_fru_data(fru_id)
 
     def prefetch_fru_data(self, fru_id=0):
         """Fetches the FRU data of the given `fru_id`.
@@ -30,10 +29,9 @@ class Fru:
         """
 
         fru_id = int(fru_id)
-        if not hasattr(self._active_connection, '_prefetched_fru_data'):
-            self._active_connection._prefetched_fru_data = {}
-        self._active_connection._prefetched_fru_data[fru_id] = \
-                self._fru_data(fru_id)
+        if 'prefetched_fru_data' not in self._cp:
+            self._cp['prefetched_fru_data'] = {}
+        self._cp['prefetched_fru_data'][fru_id] = self._fru_data(fru_id)
 
     def fru_data_at_offset_should_be(self, offset, expected_data, fru_id=0,
             msg=None):
@@ -57,7 +55,6 @@ class Fru:
         """Fails unless the FRU data contains the TLV triplet at the given
         offset."""
 
-        ac = self._active_connection
         offset = int_any_base(offset)
         expected_type = find_fru_field_type_code(expected_type)
         expected_length = int_any_base(expected_length)

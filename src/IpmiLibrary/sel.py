@@ -93,6 +93,208 @@ class Sel:
         for r in records:
             self._info('SEL dump:\n%s' % r)
 
+    def _find_sel_records_by_sensor_type(self, type):
+        ac = self._active_connection
+        matches = []
+        for record in ac._sel_records:
+            if record.sensor_type == type:
+                matches.append(record)
+        return matches
+
+    def _find_sel_records_by_sensor_number(self, number):
+        ac = self._active_connection
+        matches = []
+        for record in ac._sel_records:
+            if record.sensor_number == number:
+                matches.append(record)
+        return matches
+
+    def sel_should_contain_x_entries(self, count, msg=None):
+        """Fails if the SEL does not contain `count` entries.
+        """
+        ac = self._active_connection
+        count = int(count)
+        asserts.fail_unless_equal(count, len(ac._sel_records), msg)
+
+    def sel_should_contain_x_times_sensor_type(self, type, count, msg=None):
+        """Fails if the SEL does not contain `count` times an event with the
+        given sensor type.
+        """
+
+        type = find_sensor_type(type)
+        count = int(count)
+
+        records = self._find_sel_records_by_sensor_type(type)
+        asserts.fail_unless_equal(count, len(records), msg)
+
+    def sel_should_not_contain_sensor_type(self, type, msg=None):
+        """Fails if SEL contains the given sensor type.
+        """
+
+        type = find_sensor_type(type)
+        records = self._find_sel_records_by_sensor_type(type)
+        if len(records) != 0:
+            raise AssertionError('SEL contains sensor type %s' % type)
+
+    def wait_until_sel_contains_x_times_sensor_type(self, count, type):
+        ac = self._active_connection
+        type = find_sensor_type(type)
+        count = int(count)
+
+        start_time = time.time()
+        while time.time() < start_time + self._timeout:
+            self.fetch_sel()
+            records = self._find_sel_records_by_sensor_type(type)
+            if len(records) >= count:
+                ac._selected_sel_record = records[0]
+                return
+            time.sleep(self._poll_interval)
+
+        raise AssertionError('No match found for SEL record type "%s" in %s.'
+                % (type, utils.secs_to_timestr(self._timeout)))
+
+
+    def wait_until_sel_contains_x_times_sensor_number(self, count, number):
+        ac = self._active_connection
+        number = find_sensor_type(number)
+        count = int(count)
+
+        start_time = time.time()
+        while time.time() < start_time + self._timeout:
+            self.fetch_sel()
+            records = self._find_sel_records_by_sensor_number(number)
+            if len(records) >= count:
+                ac._selected_sel_record = records[0]
+                return
+            time.sleep(self._poll_interval)
+
+        raise AssertionError('No match found for SEL record from num  "%d" in %s.'
+                % (number, utils.secs_to_timestr(self._timeout)))
+
+    def wait_until_sel_contains_sensor_type(self, type):
+        """Wait until the SEL contains at least one record with the given
+        sensor type.
+
+        `type` is either an human readable string or the corresponding number.
+
+        The SEL is polled with an interval, which can be set by `Set Poll
+        Interval` or by `library loading`.
+
+        The first matching entry is automatically selected, see `Select SEL
+        Record By Sensor Type`.
+
+        Example:
+        | Set Timeout | 5 seconds |
+        | Wait Until SEL Contains Sensor Type | 0x23 |
+        | Wait Until SEL Contains Sensor Type | Voltage |
+        """
+        self.wait_until_sel_contains_x_times_sensor_type(1, type)
+
+    def select_sel_record_by_sensor_type(self, type, index=1):
+        """Selects a SEL record.
+
+        Selected SEL records can be further examined by the `Selected SEL
+        Records X`.
+
+        `type` can be either a string or a number. See `Wait Until SEL Contains
+        Sensor Type` for an example.
+
+        If more than one entry match `index` can be used to select the
+        subsequent ones. `index` can also be negative, see Python Sequences for
+        more details on this.
+
+        Example:
+        | # Selects the first matching SEL entry |
+        | Select SEL Record By Sensor Type | 0xcf |
+        | # Selects the third matching SEL entry |
+        | Select SEL Record By Sensor Type | 0xcf | 3 |
+        | # Selects the last matching SEL entry |
+        | Select SEL Record By Sensor Type | 0xcf | -1 |
+        """
+
+        type = find_sensor_type(type)
+        index = int(index)
+
+        if index == 0:
+            raise RuntimeError('index must not be zero')
+
+        records = self._find_sel_records_by_sensor_type(type)
+        if len(records) == 0:
+            raise AssertionError(
+                    'No SEL record found with sensor type "%s"' % type)
+        try:
+            if index > 0:
+                index -= 1
+            self._active_connection._selected_sel_record = records[index]
+        except IndexError:
+            raise AssertionError(
+                    'Only %d SEL records found with sensor type "%s"' %
+                    (len(records), type))
+
+    def select_sel_record_by_sensor_number(self, number, index=1):
+        number = find_sensor_type(number)
+        index = int(index)
+
+        if index == 0:
+            raise RuntimeError('index must not be zero')
+
+        records = self._find_sel_records_by_sensor_number(number)
+        if len(records) == 0:
+            raise AssertionError(
+                    'No SEL record found from sensor number "%d"' % number)
+        try:
+            if index > 0:
+                index -= 1
+            self._active_connection._selected_sel_record = records[index]
+        except IndexError:
+            raise AssertionError(
+                    'Only %d SEL records found from sensor number "%d"' %
+                    (len(records), number))
+
+    def selected_sel_records_event_data_should_be_equal(self, expected_value,
+            mask=0xffffff, msg=None):
+        """Fails if the event data of the selected SEL record does not match
+        the given value.
+
+        Example:
+        | Select SEL Record By Sensor Type | 0xcf |
+        | Selected SEL Records Event Data Should Be Equal | 0xa10101 |
+        | Selected SEL Records Event Data Should Be Equal | 0x010000 | 0x0f0000 |
+        """
+
+        expected_value = int_any_base(expected_value)
+        mask = int_any_base(mask)
+        ac = self._active_connection
+
+        # apply mask
+        expected_value = expected_value & mask
+        value = (ac._selected_sel_record.event_data[0] << 16 |
+                 ac._selected_sel_record.event_data[1] << 8 |
+                 ac._selected_sel_record.event_data[2])
+        value = value & mask
+
+        if not ac._selected_sel_record:
+            raise RuntimeError('No SEL record selected.')
+        asserts.fail_unless_equal(expected_value, value, msg)
+
+    def selected_sel_records_event_direction_should_be(self,
+            expected_direction, msg=None):
+        direction = find_event_direction(expected_direction)
+        ac = self._active_connection
+        asserts.fail_unless_equal(direction,
+                ac._selected_sel_record.event_direction, msg)
+
+    def selected_sel_record_should_be_from_sensor_number(self, sensor_number,
+             msg=None):
+        """
+        """
+        sensor_number = int_any_base(sensor_number)
+
+        if not self._selected_sel_record:
+            raise RuntimeError('No SEL record selected.')
+        asserts.fail_unless_equal(sensor_number,
+                self._selected_sel_record.sensor_number, msg)
+
 class SelRecord:
     def decode_hex(self, hexdata):
         self._parse_sel_record(hexdata.decode('hex'))
