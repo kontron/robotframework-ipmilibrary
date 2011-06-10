@@ -223,23 +223,6 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
         self._poll_interval = utils.timestr_to_secs(poll_interval)
         return utils.secs_to_timestr(old)
 
-    def ipmi_command_should_return_with_completion_code(self, netfn, lun,
-                command_id, cc, msg=None):
-        """Deprecated"""
-
-        netfn = int_any_base(netfn)
-        lun = int_any_base(lun)
-        command_id = int_any_base(command_id)
-        cc = int_any_base(cc)
-
-        m = pyipmi.msgs.bmc.RawMessage()
-        m.NETFN = netfn
-        m.LUN = lun
-        m.CMDID = command_id
-
-        self._ipmi._send_and_receive(m)
-        asserts.fail_unless_equal(cc, m.rsp.completion_code, msg)
-
     def send_raw_command(self, *bytes):
         """Sends a raw IPMI command.
 
