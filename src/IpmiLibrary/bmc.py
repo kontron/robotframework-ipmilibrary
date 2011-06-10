@@ -32,7 +32,7 @@ class Bmc:
         device_id = self._ipmi.get_device_id()
         asserts.fail_unless_equal(device_id.manufacturer_id, manufacturer_id)
 
-    def start_watchdog_timer(self, value, action):
+    def start_watchdog_timer(self, value, action, timer_use="SMS OS"):
         """Sets and starts IPMI watchdog timer.
 
         The watchdog is set to `value` and after that it is started.
@@ -40,10 +40,16 @@ class Bmc:
         The maximum value is 6553 seconds. `value` is given in Robot
         Framework's time format (e.g. 1 minute 20 seconds) that is explained in
         the User Guide.
+
+        `action` can be:
+            No Action, Hard Reset, Power Down, Power Cycle
+        `timer_use` can be:
+            OEM, SMS OS, OS Load, BIOS Post, BIOS Frb2
         """
 
+        timer_use = find__watchdog_timer_use(timer_use)
         config = pyipmi.bmc.Watchdog()
-        config.timer_use = pyipmi.bmc.Watchdog.TIMER_USE_SMS_OS
+        config.timer_use = timer_use
         config.dont_stop = 1
         config.dont_log = 0
         config.pre_timeout_interval = 0
