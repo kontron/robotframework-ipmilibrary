@@ -51,6 +51,11 @@ class Picmg:
         self._debug('LED state is %s' % self._cp['led_state'])
 
     def led_color_should_be(self, expected_color, msg=None, values=True):
+        """Fails if Picmg FRU Led color is not as given value.
+
+        `expected_color` value can be:
+        Blue, Red, Green, Amber, Orange, White
+        """
         expected_color = find_picmg_led_color(expected_color)
         if self._cp['led_state'].override_enabled:
             actual_color = self._cp['led_state'].override_color
@@ -60,6 +65,11 @@ class Picmg:
         asserts.fail_unless_equal(expected_color, actual_color, msg, values)
 
     def led_function_should_be(self, expected_function, msg=None, values=True):
+        """Fails if Picmg FRU Led function is not as given value.
+
+        `expected_function` value can be:
+        ON, OFF
+        """
         expected_function = find_picmg_led_function(expected_function)
         if self._cp['led_state'].override_enabled:
             actual_function = self._cp['led_state'].override_function
@@ -68,6 +78,23 @@ class Picmg:
 
         asserts.fail_unless_equal(expected_function, actual_function, msg,
                 values)
+
+    def led_state_should_be(self, expected_state, msg=None, values=True):
+        """Fails if Picmg FRU Led State is not as given value.
+
+        `expecte_state` value can be:
+        Local Control, Override, Lamp Test
+        """
+        ac = self._active_connection
+        expected_state = find_picmg_led_function(expected_state)
+        if ac._led.override_enabled:
+            pass
+        elif ac._led.override_enabled:
+            function = ac._led.override_function
+        else:
+            function = ac._led.local_function
+        asserts.fail_unless_equal(expected_function, function, msg, values)
+
 
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state):
