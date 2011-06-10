@@ -75,36 +75,34 @@ class Sel:
         See `Sel Should Contain X Times Sensor Type`, `Select Sel Record By
         Sensor Type` and `Wait Until Sel Contains Sensor Type`.
         """
-        ac = self._active_connection
-        del ac._sel_records[:]
-        ac._sel_records = ac._ipmi.get_sel_entries()
-        for r in ac._sel_records:
+
+        del self._cp['sel_records'][:]
+        self._cp['sel_records'] = self._ipmi.get_sel_entries()
+        for r in self._cp['sel_records']:
             self._info('SEL dump:\n%s' % r)
 
     def clear_sel(self):
         """Clears the sensor event log."""
-        ac = self._active_connection
-        ac._ipmi.clear_sel()
+
+        self._ipmi.clear_sel()
 
     def log_sel(self):
         """Dumps the sensor event log and logs it."""
-        ac = self._active_connection
-        records = ac._ipmi.get_sel_entries()
+
+        records = self._ipmi.get_sel_entries()
         for r in records:
             self._info('SEL dump:\n%s' % r)
 
     def _find_sel_records_by_sensor_type(self, type):
-        ac = self._active_connection
         matches = []
-        for record in ac._sel_records:
+        for record in self._cp['sel_records']:
             if record.sensor_type == type:
                 matches.append(record)
         return matches
 
     def _find_sel_records_by_sensor_number(self, number):
-        ac = self._active_connection
         matches = []
-        for record in ac._sel_records:
+        for record in self._cp['sel_records']:
             if record.sensor_number == number:
                 matches.append(record)
         return matches
@@ -112,9 +110,8 @@ class Sel:
     def sel_should_contain_x_entries(self, count, msg=None):
         """Fails if the SEL does not contain `count` entries.
         """
-        ac = self._active_connection
         count = int(count)
-        asserts.fail_unless_equal(count, len(ac._sel_records), msg)
+        asserts.fail_unless_equal(count, len(self._cp['sel_records']), msg)
 
     def sel_should_contain_x_times_sensor_type(self, type, count, msg=None):
         """Fails if the SEL does not contain `count` times an event with the
@@ -137,7 +134,6 @@ class Sel:
             raise AssertionError('SEL contains sensor type %s' % type)
 
     def wait_until_sel_contains_x_times_sensor_type(self, count, type):
-        ac = self._active_connection
         type = find_sensor_type(type)
         count = int(count)
 
@@ -146,7 +142,7 @@ class Sel:
             self.fetch_sel()
             records = self._find_sel_records_by_sensor_type(type)
             if len(records) >= count:
-                ac._selected_sel_record = records[0]
+                self._cp['selected_sel_record'] = records[0]
                 return
             time.sleep(self._poll_interval)
 
@@ -155,7 +151,6 @@ class Sel:
 
 
     def wait_until_sel_contains_x_times_sensor_number(self, count, number):
-        ac = self._active_connection
         number = find_sensor_type(number)
         count = int(count)
 
@@ -164,7 +159,7 @@ class Sel:
             self.fetch_sel()
             records = self._find_sel_records_by_sensor_number(number)
             if len(records) >= count:
-                ac._selected_sel_record = records[0]
+                self._cp['selected_sel_record'] = records[0]
                 return
             time.sleep(self._poll_interval)
 
@@ -225,7 +220,7 @@ class Sel:
         try:
             if index > 0:
                 index -= 1
-            self._active_connection._selected_sel_record = records[index]
+            self._cp['selected_sel_record'] = records[index]
         except IndexError:
             raise AssertionError(
                     'Only %d SEL records found with sensor type "%s"' %
@@ -245,7 +240,7 @@ class Sel:
         try:
             if index > 0:
                 index -= 1
-            self._active_connection._selected_sel_record = records[index]
+            self._cp['selected_sel_record'] = records[index]
         except IndexError:
             raise AssertionError(
                     'Only %d SEL records found from sensor number "%d"' %
@@ -264,25 +259,27 @@ class Sel:
 
         expected_value = int_any_base(expected_value)
         mask = int_any_base(mask)
-        ac = self._active_connection
+
+        if 'selected_sel_record' not in self._cp:
+            raise RuntimeError('No SEL record selected.')
+
+        record = self._cp['selected_sel_record']
 
         # apply mask
         expected_value = expected_value & mask
-        value = (ac._selected_sel_record.event_data[0] << 16 |
-                 ac._selected_sel_record.event_data[1] << 8 |
-                 ac._selected_sel_record.event_data[2])
-        value = value & mask
+        actual_value = (ord(record.event_data[0]) << 16
+                | ord(record.event_data[1]) << 8
+                | ord(record.event_data[2]))
+        actual_value = actual_value & mask
 
-        if not ac._selected_sel_record:
-            raise RuntimeError('No SEL record selected.')
-        asserts.fail_unless_equal(expected_value, value, msg)
+        asserts.fail_unless_equal(expected_value, actual_value, msg)
 
     def selected_sel_records_event_direction_should_be(self,
             expected_direction, msg=None):
-        direction = find_event_direction(expected_direction)
-        ac = self._active_connection
-        asserts.fail_unless_equal(direction,
-                ac._selected_sel_record.event_direction, msg)
+        expected_direction = find_event_direction(expected_direction)
+        actual_direction = self._cp['selected_sel_record'].event_direction
+
+        asserts.fail_unless_equal(expected_direction, actual_direction, msg)
 
     def selected_sel_record_should_be_from_sensor_number(self, sensor_number,
              msg=None):

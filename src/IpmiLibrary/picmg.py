@@ -43,32 +43,31 @@ class Picmg:
     def get_fru_led_state(self, fru_id, led_id):
         """Returns the FRU LED state.
         """
-        ac = self._active_connection
-
         fru_id = int(fru_id)
         led_id = int(led_id)
 
-        ac._led = ac.ipmi.get_led_state(fru_id, led_id)
+        self._cp['led_state'] = self._ipmi.get_led_state(fru_id, led_id)
 
-        self._debug('LED state %s' % ac._led)
+        self._debug('LED state is %s' % self._cp['led_state'])
 
     def led_color_should_be(self, expected_color, msg=None, values=True):
-        ac = self._active_connection
         expected_color = find_picmg_led_color(expected_color)
-        if ac._led.override_enabled:
-            color = ac._led.override_color
+        if self._cp['led_state'].override_enabled:
+            actual_color = self._cp['led_state'].override_color
         else:
-            color = ac._led.local_color
-        asserts.fail_unless_equal(expected_color, color, msg, values)
+            actual_color = self._cp['led_state'].local_color
+
+        asserts.fail_unless_equal(expected_color, actual_color, msg, values)
 
     def led_function_should_be(self, expected_function, msg=None, values=True):
-        ac = self._active_connection
         expected_function = find_picmg_led_function(expected_function)
-        if ac._led.override_enabled:
-            function = ac._led.override_function
+        if self._cp['led_state'].override_enabled:
+            actual_function = self._cp['led_state'].override_function
         else:
-            function = ac._led.local_function
-        asserts.fail_unless_equal(expected_function, function, msg, values)
+            actual_function = self._cp['led_state'].local_function
+
+        asserts.fail_unless_equal(expected_function, actual_function, msg,
+                values)
 
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state):
