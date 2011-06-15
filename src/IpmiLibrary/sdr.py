@@ -22,7 +22,7 @@ class Sdr:
         if 'prefetched_sdr_list' in self._cp:
             return self._cp['prefetched_sdr_list']
         else:
-            return self._ipmi.get_sdr_list(fru_id)
+            return self._ipmi.get_sdr_list()
 
     @property
     def _selected_sdr(self):
@@ -36,9 +36,9 @@ class Sdr:
         self._cp['selected_sdr'] = value
 
     def prefetch_sdr_list(self):
-        if 'prefetched_fru_data' not in self._cp:
-            self._cp['prefetched_fru_data'] = {}
-        self._cp['prefetched_fru_data'][fru_id] = self._fru_data(fru_id)
+        if 'prefetched_sdr_list' not in self._cp:
+            self._cp['prefetched_sdr_list'] = {}
+        self._cp['prefetched_sdr_list'] = self._sdr_list()
         self._info('Prefetching SDR list')
 
     def log_sdr_list(self):
