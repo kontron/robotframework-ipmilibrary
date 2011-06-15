@@ -47,7 +47,7 @@ class Bmc:
             OEM, SMS OS, OS Load, BIOS Post, BIOS Frb2
         """
 
-        timer_use = find__watchdog_timer_use(timer_use)
+        timer_use = find_watchdog_timer_use(timer_use)
         config = pyipmi.bmc.Watchdog()
         config.timer_use = timer_use
         config.dont_stop = 1
