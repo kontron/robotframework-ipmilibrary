@@ -36,9 +36,9 @@ class Sdr:
         self._cp['selected_sdr'] = value
 
     def prefetch_sdr_list(self):
-        if 'prefetched_sdr_list' not in self._cp:
-            self._cp['prefetched_sdr_list'] = {}
-        self._cp['prefetched_sdr_list'] = self._sdr_list()
+        if 'prefetched_sdr_list' in self._cp:
+            del self._cp['prefetched_sdr_list']
+        self._cp['prefetched_sdr_list'] = self._sdr_list
         self._info('Prefetching SDR list')
 
     def log_sdr_list(self):
