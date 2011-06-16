@@ -92,7 +92,7 @@ class Sdr:
         one.
         """
 
-        expected_value = int_any_base(expected_value)
+        expected_state = int_any_base(expected_state)
         mask = int_any_base(mask)
 
         self.sensor_state_should_be_equal(self._selected_sdr, expected_state,
@@ -218,6 +218,10 @@ class Sdr:
 
         return states
 
+    def _check_valid_threshold_name(self, threshold):
+        if threshold not in ('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'):
+            raise RuntimeError('Invalid threshold "%s"' % threshold)
+
     def get_sensor_threshold(self, name, threshold):
         """Returns the current threshold for a sensor.
 
@@ -231,8 +235,7 @@ class Sdr:
         """
 
         threshold = threshold.lower()
-        if threshold not in ('lnr', 'lcr', 'lnc, 'unc', 'ucr', 'unr'):
-            raise RuntimeError('Invalid threshold "%s"' % threshold)
+        self._is_valid_threshold(threshold)
 
         sdr = self._find_sdr_by_name(name)
 
@@ -254,6 +257,7 @@ class Sdr:
 
         threshold = threshold.lower()
         value = float(value)
+        self._is_valid_threshold(threshold)
 
         raise NotImplementedError()
 
