@@ -79,7 +79,7 @@ class Sel:
             AssertionError('No SEL record selected.')
 
     @_selected_sel_record.setter
-    def _selected_sdr(self, value):
+    def _selected_sel_record(self, value):
         self._cp['selected_sel_record'] = value
 
     def _invalidate_prefetched_sel_records(self):
@@ -312,14 +312,15 @@ class Sel:
 
         asserts.fail_unless_equal(expected_direction, actual_direction, msg)
 
-    def selected_sel_record_should_be_from_sensor_number(self, sensor_number,
+    def selected_sel_record_should_be_from_sensor_number(self, expected_number,
              msg=None):
         """
         """
-        sensor_number = int_any_base(sensor_number)
 
-        asserts.fail_unless_equal(sensor_number,
-                self._selected_sel_record.sensor_number, msg)
+        expected_number = int_any_base(expected_number)
+        actual_number = self._selected_sel_record.sensor_number
+
+        asserts.fail_unless_equal(expected_number, actual_number, msg)
 
 class SelRecord:
     def decode_hex(self, hexdata):
