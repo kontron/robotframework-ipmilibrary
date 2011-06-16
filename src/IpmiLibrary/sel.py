@@ -64,11 +64,30 @@ class NotSupportedError(Exception):
     pass
 
 class Sel:
-    def __init__(self):
-        pass
+    @property
+    def _sel_records(self):
+        if 'prefetched_sel_records' in self._cp:
+            return self._cp['prefetched_sel_records']
+        else:
+            return self._ipmi.get_sel_entries()
 
-    def fetch_sel(self):
-        """Fetches the sensor event log.
+    @property
+    def _selected_sel_record(self):
+        try:
+            return self._cp['selected_sel_record']
+        except KeyError:
+            AssertionError('No SEL record selected.')
+
+    @_selected_sel_record.setter
+    def _selected_sdr(self, value):
+        self._cp['selected_sel_record'] = value
+
+    def _invalidate_prefetched_sel_records(self):
+        if 'prefetched_sel_records' in self._cp:
+            del self._cp['prefetched_sel_records']
+
+    def prefetch_sel(self):
+        """Prefetches the sensor event log.
 
         Fetching the SEL is required for all further operation on the SEL.
 
@@ -76,10 +95,9 @@ class Sel:
         Sensor Type` and `Wait Until Sel Contains Sensor Type`.
         """
 
-        del self._cp['sel_records'][:]
-        self._cp['sel_records'] = self._ipmi.get_sel_entries()
-        for r in self._cp['sel_records']:
-            self._info('SEL dump:\n%s' % r)
+        self._info('Prefetching SEL')
+        self._invalidate_prefetched_sel_records()
+        self._cp['prefetched_sel_records'] = self._ipmi.get_sel_entries()
 
     def clear_sel(self):
         """Clears the sensor event log."""
@@ -89,20 +107,20 @@ class Sel:
     def log_sel(self):
         """Dumps the sensor event log and logs it."""
 
-        records = self._ipmi.get_sel_entries()
-        for r in records:
-            self._info('SEL dump:\n%s' % r)
+        print '*INFO* SEL'
+        for record in self._sel_records():
+            print `record`
 
     def _find_sel_records_by_sensor_type(self, type):
         matches = []
-        for record in self._cp['sel_records']:
+        for record in self._sel_records:
             if record.sensor_type == type:
                 matches.append(record)
         return matches
 
     def _find_sel_records_by_sensor_number(self, number):
         matches = []
-        for record in self._cp['sel_records']:
+        for record in self._sel_records:
             if record.sensor_number == number:
                 matches.append(record)
         return matches
@@ -111,7 +129,7 @@ class Sel:
         """Fails if the SEL does not contain `count` entries.
         """
         count = int(count)
-        asserts.fail_unless_equal(count, len(self._cp['sel_records']), msg)
+        asserts.fail_unless_equal(count, len(self._sel_records), msg)
 
     def sel_should_contain_x_times_sensor_type(self, type, count, msg=None):
         """Fails if the SEL does not contain `count` times an event with the
@@ -134,15 +152,22 @@ class Sel:
             raise AssertionError('SEL contains sensor type %s' % type)
 
     def wait_until_sel_contains_x_times_sensor_type(self, count, type):
+        """Waits until the specified sensor type appears at least `count`
+        times within the SEL.
+
+        Note: this keyword invalidates the prefetched SEL records. You have to
+        rerun the `Prefetch SEL` keyword.
+        """
+
         type = find_sensor_type(type)
         count = int(count)
 
+        self._invalidate_prefetched_sel_records()
         start_time = time.time()
         while time.time() < start_time + self._timeout:
-            self.fetch_sel()
             records = self._find_sel_records_by_sensor_type(type)
             if len(records) >= count:
-                self._cp['selected_sel_record'] = records[0]
+                self._selected_sel_record = records[0]
                 return
             time.sleep(self._poll_interval)
 
@@ -151,15 +176,21 @@ class Sel:
 
 
     def wait_until_sel_contains_x_times_sensor_number(self, count, number):
+        """Waits until the specified sensor number appears at least `count`
+        times within the SEL.
+
+        Note: this keyword invalidates the prefetched SEL records. You have to
+        rerun the `Prefetch SEL` keyword.
+        """
         number = find_sensor_type(number)
         count = int(count)
 
+        self._invalidate_prefetched_sel_records()
         start_time = time.time()
         while time.time() < start_time + self._timeout:
-            self.fetch_sel()
             records = self._find_sel_records_by_sensor_number(number)
             if len(records) >= count:
-                self._cp['selected_sel_record'] = records[0]
+                self._selected_sel_record = records[0]
                 return
             time.sleep(self._poll_interval)
 
@@ -177,6 +208,9 @@ class Sel:
 
         The first matching entry is automatically selected, see `Select SEL
         Record By Sensor Type`.
+
+        Note: this keyword invalidates the prefetched SEL records. You have to
+        rerun the `Prefetch SEL` keyword.
 
         Example:
         | Set Timeout | 5 seconds |
@@ -220,7 +254,7 @@ class Sel:
         try:
             if index > 0:
                 index -= 1
-            self._cp['selected_sel_record'] = records[index]
+            self._selected_sel_record = records[index]
         except IndexError:
             raise AssertionError(
                     'Only %d SEL records found with sensor type "%s"' %
@@ -240,7 +274,7 @@ class Sel:
         try:
             if index > 0:
                 index -= 1
-            self._cp['selected_sel_record'] = records[index]
+            self._selected_sel_record = records[index]
         except IndexError:
             raise AssertionError(
                     'Only %d SEL records found from sensor number "%d"' %
@@ -260,10 +294,7 @@ class Sel:
         expected_value = int_any_base(expected_value)
         mask = int_any_base(mask)
 
-        if 'selected_sel_record' not in self._cp:
-            raise RuntimeError('No SEL record selected.')
-
-        record = self._cp['selected_sel_record']
+        record = self._selected_sel_record
 
         # apply mask
         expected_value = expected_value & mask
@@ -277,7 +308,7 @@ class Sel:
     def selected_sel_records_event_direction_should_be(self,
             expected_direction, msg=None):
         expected_direction = find_event_direction(expected_direction)
-        actual_direction = self._cp['selected_sel_record'].event_direction
+        actual_direction = self._selected_sel_record.event_direction
 
         asserts.fail_unless_equal(expected_direction, actual_direction, msg)
 
@@ -287,8 +318,6 @@ class Sel:
         """
         sensor_number = int_any_base(sensor_number)
 
-        if not self._selected_sel_record:
-            raise RuntimeError('No SEL record selected.')
         asserts.fail_unless_equal(sensor_number,
                 self._selected_sel_record.sensor_number, msg)
 
