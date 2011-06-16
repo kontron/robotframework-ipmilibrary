@@ -4,6 +4,14 @@
 # author: Michael Walle <michael.walle@kontron.com>
 # author: Heiko Thiery <heiko.thiery@kontron.com>
 #
+from robot import utils
+from robot.utils import asserts
+from robot.utils.connectioncache import ConnectionCache
+from robot.output import LOGGER
+from robot.output.loggerhelper import Message
+
+from utils import int_any_base
+from mapping import *
 
 class Picmg:
     def activate_fru(self, fruid=0):

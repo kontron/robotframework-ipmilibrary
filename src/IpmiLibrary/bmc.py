@@ -4,6 +4,10 @@
 # author: Michael Walle <michael.walle@kontron.com>
 # author: Heiko Thiery <heiko.thiery@kontron.com>
 #
+from mapping import *
+from robot import utils
+from robot.utils import asserts
+from utils import int_any_base
 
 class Bmc:
     def issue_bmc_cold_reset(self):
