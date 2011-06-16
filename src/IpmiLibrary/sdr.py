@@ -33,7 +33,7 @@ class Sdr:
 
     @_selected_sdr.setter
     def _selected_sdr(self, value):
-        self._cp['selected_sdr']
+        self._cp['selected_sdr'] = value
 
     def prefetch_sdr_list(self):
         if 'prefetched_fru_data' not in self._cp:
