@@ -98,7 +98,8 @@ class Sdr:
         self.sensor_state_should_be_equal(self._selected_sdr, expected_state,
                 mask, msg)
 
-    def selected_sdr_sensor_reading_should_be(self, expected_reading, msg=None):
+    def selected_sdr_sensor_reading_should_be_equal(self, expected_reading,
+                msg=None):
         """Fails unless the reading of the selected sensor matches the given
         one.
 
@@ -156,7 +157,7 @@ class Sdr:
         expected_state = expected_state & mask
         actual_state = actual_state & mask
 
-        asserts.fail_unless_equal(expected_state, actual_value, msg)
+        asserts.fail_unless_equal(expected_state, actual_state, msg)
 
     def sensor_reading_should_be_equal(self, name, expected_reading, msg=None):
         """Fails unless the sensor reading of the sensor with name `name`
@@ -169,7 +170,7 @@ class Sdr:
         (raw, _) = ac._ipmi.get_sensor_reading(sdr.number)
         actual_reading = sdr.convert_sensor_reading(raw)
 
-        asserts.fail_unless_equal(expected_value, actual_value, msg)
+        asserts.fail_unless_equal(expected_value, actual_reading, msg)
 
     def sdr_should_be_present(self, name):
         """Fails unless the SDR with the given name is present.
@@ -203,7 +204,7 @@ class Sdr:
 
         sdr = self._find_sdr_by_name(name)
         (raw, _) = self._ipmi.get_sensor_reading(sdr.number)
-        reading = sdr.convert_sensor_reading(raw)
+        reading = sdr.convert_sensor_raw_to_value(raw)
 
         return reading
 
@@ -235,17 +236,17 @@ class Sdr:
         """
 
         threshold = threshold.lower()
-        self._is_valid_threshold(threshold)
+        self._check_valid_threshold_name(threshold)
 
         sdr = self._find_sdr_by_name(name)
 
         thresholds = {}
-        thresholds['unr'] = sdr.convert_sensor_reading(sdr.threshold_unr)
-        thresholds['ucr'] = sdr.convert_sensor_reading(sdr.threshold_ucr)
-        thresholds['unc'] = sdr.convert_sensor_reading(sdr.threshold_unc)
-        thresholds['lnc'] = sdr.convert_sensor_reading(sdr.threshold_lnc)
-        thresholds['lcr'] = sdr.convert_sensor_reading(sdr.threshold_lcr)
-        thresholds['lnr'] = sdr.convert_sensor_reading(sdr.threshold_lnr)
+        thresholds['unr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['unr'])
+        thresholds['ucr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['ucr'])
+        thresholds['unc'] = sdr.convert_sensor_raw_to_value(sdr.threshold['unc'])
+        thresholds['lnc'] = sdr.convert_sensor_raw_to_value(sdr.threshold['lnc'])
+        thresholds['lcr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['lcr'])
+        thresholds['lnr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['lnr'])
 
         return thresholds[threshold]
 
@@ -257,9 +258,13 @@ class Sdr:
 
         threshold = threshold.lower()
         value = float(value)
-        self._is_valid_threshold(threshold)
+        self._check_valid_threshold_name(threshold)
 
-        raise NotImplementedError()
+        sdr = self._find_sdr_by_name(name)
+        thresholds = {}
+        thresholds[threshold] = sdr.convert_sensor_value_to_raw(value)
+        print thresholds
+        self._ipmi.set_sensor_thresholds(sdr.number, **thresholds)
 
     def wait_until_sensor_state_is(self, name, state, mask=0x7fff):
         """Wait until a sensor reaches the given state.
