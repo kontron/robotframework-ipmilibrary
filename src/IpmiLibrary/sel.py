@@ -275,7 +275,7 @@ class Sel:
                     (len(records), type))
 
     def select_sel_record_by_sensor_number(self, number, index=1):
-        number = find_sensor_type(number)
+        number = int_any_base(number)
         index = int(index)
 
         if index == 0:
@@ -293,6 +293,14 @@ class Sel:
             raise AssertionError(
                     'Only %d SEL records found from sensor number "%d"' %
                     (len(records), number))
+
+    def select_sel_record_by_record_id(self, record_id):
+        record_id = int_any_base(record_id)
+
+        for record in self._sel_records:
+            if record.record_id == record_id:
+                self._selected_sel_record = record
+                return
 
     def selected_sel_records_event_data_should_be_equal(self, expected_value,
             mask=0xffffff, msg=None):
@@ -321,6 +329,11 @@ class Sel:
 
     def selected_sel_records_event_direction_should_be(self,
             expected_direction, msg=None):
+        """Fails if the direction of the selected SEL record does not mathc
+        the given direction.
+
+        `expected_direction` can be: Assertion, Deassertion
+        """
         expected_direction = find_event_direction(expected_direction)
         actual_direction = self._selected_sel_record.event_direction
 
@@ -328,13 +341,25 @@ class Sel:
 
     def selected_sel_record_should_be_from_sensor_number(self, expected_number,
              msg=None):
-        """
+        """Fails if the sensor number of the selected SEL record does not match
+        the given sensor number.
         """
 
         expected_number = int_any_base(expected_number)
         actual_number = self._selected_sel_record.sensor_number
 
         asserts.fail_unless_equal(expected_number, actual_number, msg)
+
+    def selected_sel_record_should_be_from_sensor_type(self, expected_type, msg=None):
+        """Fails if the sensor type of the selected SEL record does not match
+        the given sensor type.
+        """
+
+        expected_type = find_sensor_type(expected_type)
+        actual_type = self._selected_sel_record.sensor_type
+
+        asserts.fail_unless_equal(expected_type, actual_type, msg)
+
 
 class SelRecord:
     def decode_hex(self, hexdata):
