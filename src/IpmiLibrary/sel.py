@@ -115,8 +115,15 @@ class Sel:
         """Dumps the sensor event log and logs it."""
 
         print '*INFO* SEL'
-        for record in self._sel_records():
-            print `record`
+        for record in self._sel_records:
+            raw_string = ' '.join(['%02x' % ord(b) for b in record.data])
+            print ('Sensor Type: %(sensor_type)02xh, ' \
+                    'Sensor Number: %(sensor_number)d, ' \
+                    'Event Direction: %(event_direction)d ' \
+                    'Event Type: %(event_type)d ' \
+                    'Event Direction: %(event_direction)d' % record.__dict__),
+            print ('Event Data: %sh ' % record.event_data.encode('hex')),
+            print '[%s]' % raw_string
 
     def _find_sel_records_by_sensor_type(self, type):
         matches = []
