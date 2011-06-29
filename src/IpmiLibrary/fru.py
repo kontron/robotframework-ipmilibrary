@@ -31,7 +31,35 @@ class Fru:
         fru_id = int(fru_id)
         if 'prefetched_fru_data' not in self._cp:
             self._cp['prefetched_fru_data'] = {}
-        self._cp['prefetched_fru_data'][fru_id] = self._fru_data(fru_id)
+        self._cp['prefetched_fru_data'][fru_id] = \
+                self._ipmi.read_fru_data(fru_id)
+
+    def read_fru_data(self, offset, count, fru_id=0):
+        """Reads data bytes from FRU data area.
+
+        `offset`
+        `count`
+        `fru_id`
+        """
+        fru_id = int(fru_id)
+        offset = int_any_base(offset)
+        count = int_any_base(count)
+        data_string = self._ipmi.read_fru_data(fru_id, offset, count)
+        data = [ord(c) for c in data_string]
+        return data
+
+    def write_fru_data(self, offset, data, fru_id=0):
+        """Writes data bytes to FRU data area.
+
+        `offset`
+        `data`
+        `fru_id`
+        """
+        fru_id = int(fru_id)
+        offset = int_any_base(offset)
+        data = [int_any_base(c) for c in data]
+        data = array.array('c', [chr(c) for c in data])
+        self._ipmi.write_fru_data(data, fru_id, offset)
 
     def fru_data_at_offset_should_be(self, offset, expected_data, fru_id=0,
             msg=None):
