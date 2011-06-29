@@ -168,8 +168,10 @@ class Sdr:
 
         sdr = self._find_sdr_by_name(name)
         (raw, _) = ac._ipmi.get_sensor_reading(sdr.number)
-        actual_reading = sdr.convert_sensor_reading(raw)
-
+        if raw is not None:
+            actual_reading = sdr.convert_sensor_reading(raw)
+        else:
+            actual_reading = None
         asserts.fail_unless_equal(expected_value, actual_reading, msg)
 
     def sdr_should_be_present(self, name):
@@ -204,7 +206,10 @@ class Sdr:
 
         sdr = self._find_sdr_by_name(name)
         (raw, _) = self._ipmi.get_sensor_reading(sdr.number)
-        reading = sdr.convert_sensor_raw_to_value(raw)
+        if raw is not None:
+            reading = sdr.convert_sensor_raw_to_value(raw)
+        else:
+            reading = None
 
         return reading
 
