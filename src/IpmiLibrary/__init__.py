@@ -176,7 +176,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
         self._ipmi.session.close()
 
     def wait_until_connection_is_ready(self):
-        """Deprecated"""
+        """*DEPRECATED*"""
         start_time = time.time()
         while time.time() < start_time + self._timeout:
             output, rc = self._ipmi.interface._run_ipmitool(
@@ -187,7 +187,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
                 return
 
     def _run_ipmitool_checked(self, cmd):
-        """Deprecated"""
+        """*DEPRECATED*"""
         output, rc = self._ipmi.interface._run_ipmitool(
                 self._ipmi.target, cmd)
         if rc != 0:
