@@ -15,6 +15,8 @@ from robot.utils import asserts
 from robot.utils.connectioncache import ConnectionCache
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
+import robot.version
+
 import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
@@ -49,9 +51,11 @@ class RobotLogHandler(logging.Handler):
         lvl = self.mapping[record.levelname]
         LOGGER.log_message(Message(msg, lvl))
 
-# add log handler to pyipmi
-pyipmi.logger.add_log_handler(RobotLogHandler())
-pyipmi.logger.set_log_level(logging.DEBUG)
+
+if tuple(robot.version.VERSION.split('.')) <= (2,5):
+    # add log handler to pyipmi
+    pyipmi.logger.add_log_handler(RobotLogHandler())
+    pyipmi.logger.set_log_level(logging.DEBUG)
 
 
 class TimeoutError(Exception):
