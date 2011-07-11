@@ -72,7 +72,6 @@ class Bmc:
     def stop_watchdog_timer(self, msg=None):
         """Stops the IPMI wachtdog timer.
         """
-        ac = self._active_connection
 
         config = pyipmi.bmc.Watchdog()
         config.timer_use = pyipmi.bmc.Watchdog.TIMER_USE_OEM
@@ -84,7 +83,7 @@ class Bmc:
         config.timer_use_expiration_flags = 0xff
         config.initial_countdown = 0
         config.timeout_action = pyipmi.bmc.Watchdog.TIMEOUT_ACTION_NO_ACTION
-        ac._ipmi.set_watchdog_timer(config)
+        self._ipmi.set_watchdog_timer(config)
 
     def watchdog_timeout_action_should_be(self, action, msg=None):
         """Fails if the IPMI Watchdog timeout action is not `action`
@@ -92,7 +91,7 @@ class Bmc:
         No Action, Hard Reset, Power Down, Power Cycle
         """
         action = find_watchdog_action(action)
-        config = self._active_connection._ipmi.get_watchdog_timer()
+        config = self._ipmi.get_watchdog_timer()
         asserts.fail_unless_equal(action, config.timeout_action, msg)
 
     def watchdog_timer_use_should_be(self, timer_use, msg=None):
@@ -101,14 +100,20 @@ class Bmc:
         OEM, SMS OS, OS Load, BIOS POST, BIOS FRB2
         """
         timer_use = find_watchdog_timer_use(timer_use)
-        config = self._active_connection._ipmi.get_watchdog_timer()
+        config = self._ipmi.get_watchdog_timer()
         asserts.fail_unless_equal(timer_use, config.timer_use, msg)
 
     def watchdog_initial_timeout_value_should_be(self, value, msg=None):
         """
         """
         value = int_any_base(value)
-        config = self._active_connection._ipmi.get_watchdog_timer()
+        config = self._ipmi.get_watchdog_timer()
         asserts.fail_unless_equal(value, config.initial_countdown, msg)
 
+    def watchdog_should_be_started(self, msg=None):
+        config = self._ipmi.get_watchdog_timer()
+        asserts.fail_unless(config.is_running, msg)
 
+    def watchdog_should_be_stopped(self, msg=None):
+        config = self._ipmi.get_watchdog_timer()
+        asserts.fail_if(config.is_running, msg)
