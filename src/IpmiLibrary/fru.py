@@ -19,7 +19,7 @@ class Fru:
                 and fru_id in self._cp['prefetched_fru_data']):
             return self._cp['prefetched_fru_data'][fru_id]
         else:
-            return self._ipmi.read_fru_data(fru_id)
+            return self._ipmi.read_fru_data(fru_id=fru_id)
 
     def prefetch_fru_data(self, fru_id=0):
         """Fetches the FRU data of the given `fru_id`.
@@ -44,7 +44,7 @@ class Fru:
         fru_id = int(fru_id)
         offset = int_any_base(offset)
         count = int_any_base(count)
-        data_string = self._ipmi.read_fru_data(fru_id, offset, count)
+        data_string = self._ipmi.read_fru_data(offset, count, fru_id)
         data = [ord(c) for c in data_string]
         return data
 
@@ -59,7 +59,7 @@ class Fru:
         offset = int_any_base(offset)
         data = [int_any_base(c) for c in data]
         data = array.array('c', [chr(c) for c in data])
-        self._ipmi.write_fru_data(data, fru_id, offset)
+        self._ipmi.write_fru_data(data, offset, fru_id)
 
     def fru_data_at_offset_should_be(self, offset, expected_data, fru_id=0,
             msg=None):
