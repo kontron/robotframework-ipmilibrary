@@ -112,7 +112,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
                 % (utils.secs_to_timestr(timeout)))
 
     def open_ipmi_connection(self, host, target_address, user='', password='',
-            routing_information=[(0x20,0)], interface='ipmitool', alias=None):
+            routing_information=[(0x20,0)], port=623, interface='ipmitool',
+            alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -130,7 +131,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
 
         interface = pyipmi.interfaces.create_interface(interface)
         ipmi = pyipmi.create_connection(interface)
-        ipmi.session.set_session_type_rmcp(host)
+        ipmi.session.set_session_type_rmcp(host, port)
         ipmi.session.set_auth_type_user(user, password)
         ipmi.target = pyipmi.Target(target_address)
         ipmi.target.set_routing_information(routing_information)
