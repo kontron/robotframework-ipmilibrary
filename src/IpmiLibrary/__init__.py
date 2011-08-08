@@ -160,6 +160,10 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
         self._active_connection = self._cache.switch(index_or_alias)
         return old_index
 
+    def currently_active_ipmi_connection(self):
+        """Returns the index of the currently active IPMI connection."""
+        return self._cache.current_index
+
     def close_all_ipmi_connections(self):
         """Closes all open connections and empties the connection cache.
 
