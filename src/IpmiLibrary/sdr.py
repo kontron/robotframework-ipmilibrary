@@ -141,7 +141,7 @@ class Sdr:
 
         asserts.fail_unless_equal(expected_sdr_type, actual_sdr_type)
 
-    def sensor_state_should_be_equal(self, name, expected_state,
+    def sensor_state_should_be_equal(self, name, expected_state, sdr=None,
             mask=0x7fff, msg=None):
         """Fails unless the sensor state of the sensor with name `name` matches
         the given one.
@@ -150,7 +150,9 @@ class Sdr:
         expected_state = int_any_base(expected_state)
         mask = int_any_base(mask)
 
-        sdr = self._find_sdr_by_name(name)
+        if sdr is None:
+            sdr = self._find_sdr_by_name(name)
+
         (_, actual_state) = self._ipmi.get_sensor_reading(sdr.number)
 
         # apply mask
@@ -213,13 +215,15 @@ class Sdr:
 
         return reading
 
-    def get_sensor_state(self, name):
+    def get_sensor_state(self, name, sdr=None):
         """Returns the assertion state of a sensor.
 
         `name` is the sensor ID string. See also `Get Sensor Reading`.
         """
 
-        sdr = self._find_sdr_by_name(name)
+        if sdr is None:
+            sdr = self._find_sdr_by_name(name)
+
         (_, states) = self._ipmi.get_sensor_reading(sdr.number)
 
         return states
@@ -311,3 +315,59 @@ class Sdr:
 
         raise AssertionError('Sensor "%s" did not reach the value "%s" in %s.'
                 % (name, value, utils.secs_to_timestr(self._timeout)))
+
+
+
+    def prefetch_hotswap_sdr(self, name):
+        if 'prefetched_hotswap_sdr' not in self._cp:
+            self._cp['prefetched_hotswap_sdr'] = {}
+        if ('prefetched_hotswap_sdr' in self._cp and
+            name in self._cp['prefetched_hotswap_sdr']):
+                del self._cp['prefetched_hotswap_sdr'][name]
+        for sdr in self._ipmi.sdr_entries():
+            if (sdr.type is pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD or \
+                sdr.type is pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
+                if sdr.device_id_string == name:
+                    self._cp['prefetched_hotswap_sdr'][name] = sdr
+                    return
+
+    def _find_hotswap_sdr_by_name(self, name):
+        if ('prefetched_hotswap_sdr' in self._cp and
+            name in self._cp['prefetched_hotswap_sdr']):
+            return self._cp['prefetched_hotswap_sdr'][name]
+        else:
+            self._info('HS SDR %s not found' % name)
+
+    def hotswap_sensor_state_should_be_equal(self, name, expected_state,
+            mask=0x7fff, msg=None):
+        """
+        """
+
+        sdr = self._find_hotswap_sdr_by_name(name)
+        expected_state = int_any_base(expected_state)
+        mask = int_any_base(mask)
+
+        self.sensor_state_should_be_equal(name, expected_state, sdr)
+
+    def wait_until_hotswap_sensor_state_is(self, name, state, mask=0x7fff):
+        """Wait until a hotswap sensor reaches the given state.
+
+        `name` is the sensor ID string. See also `Get Sensor Reading`.
+        """
+
+        state = int_any_base(state)
+        mask = int_any_base(mask)
+
+        sdr = self._find_hotswap_sdr_by_name(name)
+
+        start_time = time.time()
+        while time.time() < start_time + self._timeout:
+            current_state = self.get_sensor_state(name, sdr)
+            if current_state & mask == state & mask:
+                self._info('waited %s seconds until HS state "%s" was reached'
+                        % (time.time()-start_time, state))
+                return
+            time.sleep(self._poll_interval)
+
+        raise AssertionError('HS Sensor "%s" did not reach the state "%s" in %s'
+                % (name, state, utils.secs_to_timestr(self._timeout)))
