@@ -173,6 +173,12 @@ class Sel:
         """
         self.wait_until_sel_contains_x_times_sensor_type(1, type)
 
+    def select_sel_record_at_offset(self, offset):
+        """Selects a SEL record at offset.
+        """
+        offset = int_any_base(offset)
+        self._selected_sel_record = self._sel_records[offset]
+
     def select_sel_record_by_sensor_type(self, type, index=1):
         """Selects a SEL record.
 
