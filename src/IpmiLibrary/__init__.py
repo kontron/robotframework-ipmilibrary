@@ -32,6 +32,7 @@ from bmc import Bmc
 from picmg import Picmg
 from hpm import Hpm
 from chassis import Chassis
+from lan import Lan
 
 class RobotLogHandler(logging.Handler):
     # mappping from logging to robots log levels
@@ -76,7 +77,7 @@ class IpmiConnection():
         self._ipmi.session.close()
 
 
-class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
+class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._cache = ConnectionCache()
         self._timeout = timeout
