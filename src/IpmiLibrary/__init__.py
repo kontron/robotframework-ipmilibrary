@@ -20,6 +20,7 @@ import robot.version
 import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
+import pyipmi.msgs
 
 from utils import int_any_base
 from mapping import *
@@ -263,6 +264,18 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis):
         rsp = self._ipmi.raw_command(req)
 
         return [ord(b) for b in rsp]
+
+    def send_ipmi_message(self, message, expected_cc=0x00):
+        expected_cc = int_any_base(expected_cc)
+        rsp = self._ipmi.send_message(message)
+        cc = rsp.completion_code
+        msg = 'Command returned with return completion code 0x%02x, ' \
+            'but should be 0x%02x' % (cc, expected_cc)
+        asserts.fail_unless_equal(expected_cc, cc, msg, values=False)
+        return rsp
+
+    def create_message_request(self, name):
+        return pyipmi.msgs.create_request_by_name(name)
 
     def _warn(self, msg):
         self._log(msg, 'WARN')
