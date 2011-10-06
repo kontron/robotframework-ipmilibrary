@@ -7,7 +7,7 @@
 
 import logging
 import time
-from sel import SelRecord
+#from sel import SelRecord
 from subprocess import Popen, PIPE
 
 from robot import utils

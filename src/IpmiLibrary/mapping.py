@@ -1,9 +1,10 @@
 import pyipmi
 import pyipmi.picmg
 import pyipmi.bmc
+import pyipmi.sdr
+import pyipmi.event
 import pyipmi.constants
 
-import sel
 from utils import find_attribute
 
 # new
@@ -52,8 +53,8 @@ def find_watchdog_timer_use(timer_use):
             'TIMER_USE_')
 
 def find_event_direction(direction):
-    return find_attribute(sel, direction, 'EVENT_')
+    return find_attribute(pyipmi.event, direction, 'EVENT_')
 
 def find_sensor_type(sensor_type):
-    return find_attribute(sel, sensor_type, 'SENSOR_TYPE_')
+    return find_attribute(pyipmi.sdr, sensor_type, 'SENSOR_TYPE_')
 
