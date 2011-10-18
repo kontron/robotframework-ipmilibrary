@@ -113,7 +113,7 @@ class Sel:
         rerun the `Prefetch SEL` keyword.
         """
 
-        type = find_sensor_type(type)
+        type, type_name = find_sensor_type(type), type
         count = int(count)
 
         self._invalidate_prefetched_sel_records()
@@ -125,8 +125,8 @@ class Sel:
                 return
             time.sleep(self._poll_interval)
 
-        raise AssertionError('No match found for SEL record type "%s" in %s.'
-                % (type, utils.secs_to_timestr(self._timeout)))
+        raise AssertionError('No match found for SEL record type "%s (%s)" in %s.'
+                % (type_name, type, utils.secs_to_timestr(self._timeout)))
 
 
     def wait_until_sel_contains_x_times_sensor_number(self, count, number):
