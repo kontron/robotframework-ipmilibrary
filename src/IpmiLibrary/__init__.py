@@ -21,6 +21,7 @@ import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
 import pyipmi.msgs
+from pyipmi.errors import TimeoutError
 
 from utils import int_any_base
 from mapping import *
@@ -60,10 +61,6 @@ if tuple(robot.version.VERSION.split('.')) <= (2,5):
     pyipmi.logger.set_log_level(logging.DEBUG)
 
 
-class TimeoutError(Exception):
-    pass
-
-
 class IpmiConnection():
     def __init__(self, ipmi):
         self._ipmi = ipmi
@@ -93,7 +90,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         """Property storage per connection."""
         return self._active_connection._properties
 
-    def wait_until_rmcp_is_ready(self, host, timeout=45):
+    def wait_until_rmcp_is_ready(self, timeout=45):
         """Waits until the host can handle RMCP packets.
 
         `timeout` is given in Robot Framework's time format
@@ -109,6 +106,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
                 return
             except TimeoutError:
                 pass
+            time.sleep(self._poll_interval)
 
         raise AssertionError('RMCP not ready in %s.'
                 % (utils.secs_to_timestr(timeout)))
