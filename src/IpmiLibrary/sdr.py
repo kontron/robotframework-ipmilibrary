@@ -249,15 +249,14 @@ class Sdr:
 
         sdr = self._find_sdr_by_name(name)
 
-        thresholds = {}
-        thresholds['unr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['unr'])
-        thresholds['ucr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['ucr'])
-        thresholds['unc'] = sdr.convert_sensor_raw_to_value(sdr.threshold['unc'])
-        thresholds['lnc'] = sdr.convert_sensor_raw_to_value(sdr.threshold['lnc'])
-        thresholds['lcr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['lcr'])
-        thresholds['lnr'] = sdr.convert_sensor_raw_to_value(sdr.threshold['lnr'])
+        thresholds = self._ipmi.get_sensor_thresholds(sdr.number)
 
-        return thresholds[threshold]
+        converted_thresholds = {}
+        for t in ('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'):
+            if thresholds.has_key(t):
+                converted_thresholds[t] \
+                    = sdr.convert_sensor_raw_to_value(thresholds[t])
+        return converted_thresholds[threshold]
 
     def set_sensor_threshold(self, name, threshold, value):
         """Sets the threshold of a sensor.
