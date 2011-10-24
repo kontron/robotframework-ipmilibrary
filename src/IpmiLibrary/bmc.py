@@ -36,7 +36,8 @@ class Bmc:
         device_id = self._ipmi.get_device_id()
         asserts.fail_unless_equal(device_id.manufacturer_id, manufacturer_id)
 
-    def start_watchdog_timer(self, value, action, timer_use="SMS OS"):
+    def start_watchdog_timer(self, value, action="Hard Reset",
+            timer_use="SMS OS"):
         """Sets and starts IPMI watchdog timer.
 
         The watchdog is set to `value` and after that it is started.
