@@ -86,6 +86,11 @@ class Bmc:
         config.timeout_action = pyipmi.bmc.Watchdog.TIMEOUT_ACTION_NO_ACTION
         self._ipmi.set_watchdog_timer(config)
 
+    def get_watchdog_timer_countdown_value(self):
+        """Returns the present watchdog countdown value."""
+        config = self._ipmi.get_watchdog_timer()
+        return config.present_countdown
+
     def watchdog_timeout_action_should_be(self, action, msg=None):
         """Fails if the IPMI Watchdog timeout action is not `action`
         `action` can be:
