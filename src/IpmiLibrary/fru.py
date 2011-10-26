@@ -60,6 +60,8 @@ class Fru:
         offset = int_any_base(offset)
         if isinstance(data, basestring):
             data = [int_any_base(d) for d in data.split(' ')]
+        elif isinstance(data, list):
+            data = data
         else:
             data = [int_any_base(data)]
         data = array.array('c', [chr(c) for c in data])
