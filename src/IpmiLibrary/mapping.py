@@ -4,6 +4,7 @@ import pyipmi.bmc
 import pyipmi.sdr
 import pyipmi.event
 import pyipmi.constants
+import pyipmi.hpm
 
 from utils import find_attribute
 
@@ -61,3 +62,5 @@ def find_sensor_type(sensor_type):
 def find_lan_configuration_parameter(parameter):
     return find_attribute(pyipmi.lan, parameter, 'LAN_PARAMETER_')
 
+def find_hpm_component_property(property):
+    return find_attribute(pyipmi.hpm, property, 'PROPERTY_')
