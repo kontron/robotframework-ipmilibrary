@@ -5,6 +5,7 @@ import pyipmi.sdr
 import pyipmi.event
 import pyipmi.constants
 import pyipmi.hpm
+import pyipmi.lan
 
 from utils import find_attribute
 
@@ -26,24 +27,24 @@ def find_entity_type_id(entity_id):
 
 # old ones.. should go away/be replaced soon
 def find_picmg_interface_type(interface_type):
-    return find_attribute(pyipmi.picmg.LinkInfo, interface_type,
+    return find_attribute(pyipmi.picmg.LinkDescriptor, interface_type,
             'INTERFACE')
 
 def find_picmg_link_type(link_type):
-    return find_attribute(pyipmi.picmg.LinkInfo, link_type, 'TYPE_')
+    return find_attribute(pyipmi.picmg.LinkDescriptor, link_type, 'TYPE_')
 
 def find_picmg_link_type_extension(extension):
-    return find_attribute(pyipmi.picmg.LinkInfo, extension, 'TYPE_EXT_')
+    return find_attribute(pyipmi.picmg.LinkDescriptor, extension, 'TYPE_EXT_')
 
 def find_picmg_link_flags(flags):
-    return find_attribute(pyipmi.picmg.LinkInfo, flags, 'FLAGS_')
+    return find_attribute(pyipmi.picmg.LinkDescriptor, flags, 'FLAGS_')
 
 def find_picmg_link_state(state):
-    return find_attribute(pyipmi.picmg.LinkInfo, state, 'STATE_')
+    return find_attribute(pyipmi.picmg.LinkDescriptor, state, 'STATE_')
 
-def find_picmg_signaling_class(signaling_class):
-    return find_attribute(pyipmi.picmg, signaling_class,
-            'CHANNEL_SIGNALING_CLASS_')
+def find_picmg_link_signaling_class(signaling_class):
+    return find_attribute(pyipmi.picmg.LinkDescriptor, signaling_class,
+            'SIGNALING_')
 
 def find_watchdog_action(action):
     return find_attribute(pyipmi.bmc.Watchdog, action,

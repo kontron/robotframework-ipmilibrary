@@ -103,9 +103,8 @@ class Picmg:
             function = ac._led.local_function
         asserts.fail_unless_equal(expected_function, function, msg, values)
 
-
     def set_port_state(self, interface, channel, flags, link_type,
-            link_type_ext, state):
+            link_type_ext, state, link_class=0):
         """Sends the "PICMG Set Portstate" command.
 
         `interface` is one of the following interface types: BASE, FABRIC,
@@ -117,9 +116,12 @@ class Picmg:
         `link_type` is one of the following values: BASE, ETHERNET_FABRIC,
         INFINIBAND_FABRIC, STARFABRIC_FABRIC, PCIEXPRESS_FABRIC.
 
+        `link_class` is the channel signaling class capability and hast to be
+        one of the following values: CLASS_BASIC, CLASS_10_3125GBD.
+
         `link_type_ext` is one of the following values: BASE0, BASE1,
-        ETHERNET_FIX1000BX, ETHERNET_FIX10GBX4, ETHERNET_FCPI,
-        ETHERNET_FIX1000KX_10GKR, ETHERNET_FIX10GKX4, ETHERNET_FIX40GKR4
+        ETHERNET_FIX1000_BX, ETHERNET_FIX10GB_X4, ETHERNET_FCPI,
+        ETHERNET_FIX1000KX_10G_KR, ETHERNET_FIX10GK_X4, ETHERNET_FIX40G_KR4
 
         `state` is the link state and has to be one of the following values:
         ENABLE, DISABLE.
@@ -130,18 +132,19 @@ class Picmg:
         | Set Port State | BASE | 1 | LANE0 | BASE | BASE0 | ENABLE
         """
 
-        link_info = pyipmi.picmg.LinkInfo()
-        link_info.interface = find_picmg_interface_type(interface)
-        link_info.channel = int(channel)
-        link_info.link_flags = find_picmg_link_flags(flags)
-        link_info.type = find_picmg_link_type(link_type)
-        link_info.extension = find_picmg_link_type_extension(link_type_ext)
-        link_info.state = find_picmg_link_state(state)
-        link_info.grouping_id = 0
-        self._ipmi.set_port_state(link_info)
+        link_descr = pyipmi.picmg.LinkDescriptor()
+        link_descr.interface = find_picmg_interface_type(interface)
+        link_descr.channel = int(channel)
+        link_descr.link_flags = find_picmg_link_flags(flags)
+        link_descr.type = find_picmg_link_type(link_type)
+        link_descr.sig_class = find_picmg_link_signaling_class(link_class)
+        link_descr.extension = find_picmg_link_type_extension(link_type_ext)
+        link_descr.grouping_id = 0
+        state = find_picmg_link_state(state)
+        self._ipmi.set_port_state(link_descr, state)
 
     def set_signaling_class(self, interface, channel, signaling_class):
-        """Sends the `Set Channel Siganling Class` command.
+        """*DEPRECATED* Sends the `Set Channel Siganling Class` command.
 
         `interface` the interface type (BASE, FABRIC, UPDATE_CHANNEL)
 
@@ -157,7 +160,7 @@ class Picmg:
         self._ipmi.set_signaling_class(interface, channel, signaling_class)
 
     def get_signaling_class(self, interface, channel):
-        """Sends `Get Channel Signaling Class` command
+        """*DEPRECATED* Sends `Get Channel Signaling Class` command
         """
 
         interface = find_picmg_interface_type(interface)
