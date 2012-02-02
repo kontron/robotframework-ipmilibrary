@@ -143,6 +143,23 @@ class Picmg:
         state = find_picmg_link_state(state)
         self._ipmi.set_port_state(link_descr, state)
 
+    def get_power_level(self, fruid, power_type, offset):
+        """return the specified power level for the fru
+        `fruid`
+
+        `power_type`
+
+        `offset`
+
+        """
+        fruid = int_any_base(fruid)
+        power_type = int_any_base(power_type)
+        offset = int_any_base(offset)
+
+        pwr = self._ipmi.get_power_level(fruid, power_type)
+        return pwr.power_levels[offset]
+
+
     def set_signaling_class(self, interface, channel, signaling_class):
         """*DEPRECATED* Sends the `Set Channel Siganling Class` command.
 
