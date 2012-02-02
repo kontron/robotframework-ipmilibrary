@@ -141,6 +141,17 @@ class Sdr:
 
         asserts.fail_unless_equal(expected_sdr_type, actual_sdr_type)
 
+    def get_sensor_number_for_sensor_name(self, name, sdr=None):
+        """Return the sensor number that is specified by name.
+        """
+        self.select_sdr_by_name(name)
+
+        if sdr is None:
+            sdr = self._find_sdr_by_name(name)
+
+        return sdr.number
+
+
     def sensor_state_should_be_equal(self, name, expected_state, sdr=None,
             mask=0x7fff, msg=None):
         """Fails unless the sensor state of the sensor with name `name` matches
