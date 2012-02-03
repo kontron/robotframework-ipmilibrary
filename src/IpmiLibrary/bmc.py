@@ -70,6 +70,11 @@ class Bmc:
         # start watchdog
         self._ipmi.reset_watchdog_timer()
 
+    def reset_watchdog_timer(self):
+        """Send the Reset Watchdog Timer Command
+        """
+        self._ipmi.reset_watchdog_timer()
+
     def stop_watchdog_timer(self, msg=None):
         """Stops the IPMI wachtdog timer.
         """
