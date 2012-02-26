@@ -258,9 +258,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             raise RuntimeError('netfn and/or cmdid missing')
 
         bytes = [ int_any_base(b) for b in bytes ]
-        bytes[0] = bytes[0] << 2 | lun
-        req = ''.join([chr(b) for b in bytes])
-        rsp = self._ipmi.raw_command(req)
+        raw = ''.join([chr(b) for b in bytes[1:]])
+        rsp = self._ipmi.raw_command(lun, bytes[0], raw)
 
         return [ord(b) for b in rsp]
 
