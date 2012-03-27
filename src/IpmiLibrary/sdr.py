@@ -357,7 +357,7 @@ class Sdr:
         expected_state = int_any_base(expected_state)
         mask = int_any_base(mask)
 
-        self.sensor_state_should_be_equal(name, expected_state, sdr)
+        self.sensor_state_should_be_equal(name, expected_state, sdr, mask, msg)
 
     def wait_until_hotswap_sensor_state_is(self, name, state, mask=0x7fff):
         """Wait until a hotswap sensor reaches the given state.
