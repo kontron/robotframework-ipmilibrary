@@ -36,6 +36,15 @@ class Bmc:
         device_id = self._ipmi.get_device_id()
         asserts.fail_unless_equal(device_id.manufacturer_id, manufacturer_id)
 
+    def device_should_support(self, supported_function):
+        """The device can support the following functions:
+        'SENSOR', 'SDR_REPOSITORY', 'SEL', 'FRU_INVENTORY',
+        'IPMB_EVENT_RECEIVER', 'IPMB_EVENT_GENERATOR', 'BRIDGE', 'CHASSIS'.
+        """
+        device_id = self._ipmi.get_device_id()
+        supports = device_id.supports_function(supported_function)
+        asserts.fail_unless_equal(supports, True)
+
     def start_watchdog_timer(self, value, action="Hard Reset",
             timer_use="SMS OS"):
         """Sets and starts IPMI watchdog timer.
