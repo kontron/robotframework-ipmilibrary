@@ -159,6 +159,18 @@ class Picmg:
         pwr = self._ipmi.get_power_level(fruid, power_type)
         return pwr.power_levels[offset]
 
+    def get_fan_speed_properties(self, fruid):
+        """
+        """
+        fruid = int_any_base(fruid)
+        return self._ipmi.get_fan_speed_properties(fruid)
+
+    def get_fan_override_level(self, fruid):
+        """
+        """
+        fruid = int_any_base(fruid)
+        (override_level, local_level) = self._ipmi.get_fan_level(fruid)
+        return override_level
 
     def set_signaling_class(self, interface, channel, signaling_class):
         """*DEPRECATED* Sends the `Set Channel Siganling Class` command.
