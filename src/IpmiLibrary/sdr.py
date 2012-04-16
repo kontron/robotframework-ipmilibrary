@@ -348,6 +348,20 @@ class Sdr:
         else:
             self._info('HS SDR %s not found' % name)
 
+    def get_hotswap_state(self, name):
+        sdr = self._find_hotswap_sdr_by_name(name)
+        state = self.get_sensor_state(name, sdr)&0xff
+
+        if state & state-1 is not 0:
+            raise AssertionError('sensor %s reports invalid state 0x%02x'
+                    % (name, state))
+
+        for s in xrange(7, -1, -1):
+            print 's=%d' %s
+            if state & (1<<s):
+                print 's=%d' %s
+                return s
+
     def hotswap_sensor_state_should_be_equal(self, name, expected_state,
             mask=0x7fff, msg=None):
         """
