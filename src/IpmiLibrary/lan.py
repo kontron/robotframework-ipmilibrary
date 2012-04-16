@@ -19,7 +19,34 @@ class Lan:
         """Get the LAN Configuration Parameter specified:
 
         `channel`
-        `parameter`
+        `parameter` - following parameters are supporte:
+
+        SET_IN_PROGRESS
+        AUTHENTICATION_TYPE_SUPPORT
+        AUTHENTICATION_TYPE_ENABLE
+        IP_ADDRESS
+        IP_ADDRESS_SOURCE
+        MAC_ADDRESS
+        SUBNET_MASK
+        IPV4_HEADER_PARAMETERS
+        PRIMARY_RMCP_PORT
+        SECONDARY_RMCP_PORT
+        BMC_GENERATED_ARP_CONTROL
+        GRATUITOUS_ARP_INTERVAL
+        DEFAULT_GATEWAY_ADDRESS
+        DEFAULT_GATEWAY_MAC_ADDRESS
+        BACKUP_GATEWAY_ADDRESS
+        BACKUP_GATEWAY_MAC_ADDRESS
+        COMMUNITY_STRING
+        NUMBER_OF_DESTINATIONS
+        DESTINATION_TYPE
+        DESTINATION_ADDRESSES
+        802_1Q_VLAN_ID
+        802_1Q_VLAN_PRIORITY
+        RMCP_PLUS_MESSAGING_CIPHER_SUITE_ENTRY_SUPPORT
+        RMCP_PLUS__MESSAGING_CIPHER_SUITE_ENTRIES
+        RMCP_PLUS_MESSAGING_CIPHER_SUITE_PRIVILEGE_LEVES
+        DESTINATION_ADDRESS_VLAN_TAGS
         """
 
         channel = int_any_base(channel)
