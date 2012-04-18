@@ -355,3 +355,15 @@ class Sel:
         actual_type = self._selected_sel_record.sensor_type
 
         asserts.fail_unless_equal(expected_type, actual_type, msg)
+
+    def set_event_receiver(self, ipmb_i2c_addr, lun=0):
+        """
+        """
+        ipmb_i2c_addr = int_any_base(ipmb_i2c_addr)
+        lun = int_any_base(lun)
+        self._ipmi.set_event_receiver(ipmb_i2c_addr, lun)
+
+    def get_event_receiver(self):
+        """
+        """
+        return self._ipmi.get_event_receiver()
