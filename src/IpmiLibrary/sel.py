@@ -199,6 +199,56 @@ class Sel:
         | Select SEL Record By Sensor Type | 0xcf | 3 |
         | # Selects the last matching SEL entry |
         | Select SEL Record By Sensor Type | 0xcf | -1 |
+
+        SENSOR_TYPE_TEMPERATURE = 0x01
+        VOLTAGE = 0x02
+        CURRENT = 0x03
+        FAN = 0x04
+        CHASSIS_INTRUSION = 0x05
+        PLATFORM_SECURITY = 0x06
+        PROCESSOR = 0x07
+        POWER_SUPPLY = 0x08
+        POWER_UNIT = 0x09
+        COOLING_DEVICE = 0x0a
+        OTHER_UNITS_BASED_SENSOR = 0x0b
+        MEMORY = 0x0c
+        DRIVE_SLOT = 0x0d
+        POST_MEMORY_RESIZE = 0x0e
+        SYSTEM_FIRMWARE_PROGRESS = 0x0f
+        EVENT_LOGGING_DISABLED = 0x10
+        WATCHDOG_1 = 0x11
+        SYSTEM_EVENT = 0x12
+        CRITICAL_INTERRUPT = 0x13
+        BUTTON = 0x14
+        MODULE_BOARD = 0x15
+        MICROCONTROLLER_COPROCESSOR = 0x16
+        ADD_IN_CARD = 0x17
+        CHASSIS = 0x18
+        CHIP_SET = 0x19
+        OTHER_FRU = 0x1a
+        CABLE_INTERCONNECT = 0x1b
+        TERMINATOR = 0x1c
+        SYSTEM_BOOT_INITIATED = 0x1d
+        BOOT_ERROR = 0x1e
+        OS_BOOT = 0x1f
+        OS_CRITICAL_STOP = 0x20
+        SLOT_CONNECTOR = 0x21
+        SYSTEM_ACPI_POWER_STATE = 0x22
+        WATCHDOG_2 = 0x23
+        PLATFORM_ALERT = 0x24
+        ENTITY_PRESENT = 0x25
+        MONITOR_ASIC_IC = 0x26
+        LAN = 0x27
+        MANGEMENT_SUBSYSTEM_HEALTH = 0x28
+        BATTERY = 0x29
+        SESSION_AUDIT = 0x2a
+        VERSION_CHANGE = 0x2b
+        FRU_STATE = 0x2c
+        FRU_HOT_SWAP = 0xf0
+        IPMB_PHYSICAL_LINK = 0xf1
+        MODULE_HOT_SWAP = 0xf2
+        POWER_CHANNEL_NOTIFICATION = 0xf3
+        TELCO_ALARM_INPUT = 0xf4
         """
 
         type = find_sensor_type(type)
