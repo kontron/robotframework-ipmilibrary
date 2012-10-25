@@ -95,8 +95,8 @@ class Sdr:
         expected_state = int_any_base(expected_state)
         mask = int_any_base(mask)
 
-        self.sensor_state_should_be_equal(self._selected_sdr, expected_state,
-                mask, msg)
+        self.sensor_state_should_be_equal(self._selected_sdr.device_id_string,
+		expected_state, self._selected_sdr, mask, msg)
 
     def selected_sdr_sensor_reading_should_be_equal(self, expected_reading,
                 msg=None):
@@ -163,7 +163,6 @@ class Sdr:
 
         if sdr is None:
             sdr = self._find_sdr_by_name(name)
-
         (_, actual_state) = self._ipmi.get_sensor_reading(sdr.number)
 
         # apply mask
