@@ -109,60 +109,93 @@ class Fru:
         asserts.fail_unless_equal(expected_length, tlv[0] & 0x3f, msg)
         asserts.fail_unless_equal(expected_data, tlv[1:], msg)
 
+    def fru_data_get_board_manufacturer(self, fru_id=0):
+        """Returns the Board Manufacturer.
+        """
+        fru_id = int_any_base(fru_id)
+        fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
+        return str(fru.board_info_area.manufacturer)
 
     def fru_data_board_manufacturer_should_be(self, expected_value, fru_id=0):
+        """Fails if the Board Manufacturer is not as expected.
         """
+        value = self.fru_data_get_board_manufacturer(fru_id)
+        asserts.fail_unless_equal(expected_value, value)
+
+    def fru_data_get_board_product_name(self, fru_id=0):
+        """Returns the Board Product Name.
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.board_info_area.manufacturer.toString()
-        asserts.fail_unless_equal(expected_value, value)
+        return str(fru.board_info_area.product_name)
 
     def fru_data_board_product_name_should_be(self, expected_value, fru_id=0):
+        """Fails if the Board Product Name is not as expected.
         """
+        value = self.fru_data_get_board_product_name(fru_id)
+        asserts.fail_unless_equal(expected_value, value)
+
+    def fru_data_get_board_serial_number(self, fru_id=0):
+        """Returns the Board Serial Number.
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.board_info_area.product_name.toString()
-        asserts.fail_unless_equal(expected_value, value)
+        return str(fru.board_info_area.serial_number)
 
     def fru_data_board_serial_number_should_be(self, expected_value, fru_id=0):
+        """Fails if the Board Serial Number is not as expected.
         """
+        value = self.fru_data_get_board_serial_number(fru_id)
+        asserts.fail_unless_equal(expected_value, value)
+
+    def fru_data_get_board_part_number(self, fru_id=0):
+        """Returns the Board Part Number.
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.board_info_area.serial_number.toString()
-        asserts.fail_unless_equal(expected_value, value)
+        return str(fru.board_info_area.part_number)
 
     def fru_data_board_part_number_should_be(self, expected_value, fru_id=0):
+        """Fails if the Board Part Number is not as expected.
         """
+        value = self.fru_data_get_board_part_number(fru_id)
+        asserts.fail_unless_equal(expected_value, value)
+
+    def fru_data_get_product_manufacturer(self, fru_id=0):
+        """Returns the Product Manufacturer.
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.board_info_area.part_number.toString()
-        asserts.fail_unless_equal(expected_value, value)
-
+        return str(fru.product_info_area.manufacturer)
 
     def fru_data_product_manufacturer_should_be(self, expected_value, fru_id=0):
+        """Fails if the Product Manufacturer is not as expected.
         """
+        value = self.fru_data_get_product_manufacturer(fru_id)
+        asserts.fail_unless_equal(expected_value, value)
+
+    def fru_data_get_product_name(self, fru_id=0):
+        """Returns the Product Name.
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.product_info_area.manufacturer.toString()
-        asserts.fail_unless_equal(expected_value, value)
+        return str(fru.product_info_area.product_name)
 
     def fru_data_product_name_should_be(self, expected_value, fru_id=0):
+        """Fails if the Product Name is not as expected.
         """
-        """
-        fru_id = int_any_base(fru_id)
-        fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.product_info_area.name.toString()
+        value = self.fru_data_get_product_name(fru_id)
         asserts.fail_unless_equal(expected_value, value)
 
-    def fru_data_product_part_number_should_be(self, expected_value, fru_id=0):
-        """
+    def fru_data_get_product_part_number(self, fru_id=0):
+        """Returns the Product Part Number.
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        value = fru.product_info_area.part_number.toString()
+        return str(fru.product_info_area.part_number)
+
+    def fru_data_product_part_number_should_be(self, expected_value, fru_id=0):
+        """Fails if the Product Part Number is not as expected.
+        """
+        value = self.fru_data_get_product_part_number(fru_id)
         asserts.fail_unless_equal(expected_value, value)
