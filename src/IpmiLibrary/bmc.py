@@ -18,7 +18,7 @@ class Bmc:
     def get_bmc_device_id(self):
         """Sends a _bmc get device id_ command to the given controller.
         """
-        device_id = self._ipmi.get_device_id()
+        return self._ipmi.get_device_id()
 
     def product_id_should_be(self, product_id):
         """Fails if the GetDeviceID command response does not contain
