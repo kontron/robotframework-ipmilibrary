@@ -25,6 +25,9 @@ def find_sdr_record_type(record_type):
 def find_entity_type_id(entity_id):
     return find_attribute(pyipmi.constants, entity_id, 'ENTITY_TYPE_')
 
+def find_picmg_multirecord_id(record_id):
+    return find_attribute(pyipmi.fru.FruPicmgRecord, record_id, 'PICMG_RECORD_ID_')
+
 # old ones.. should go away/be replaced soon
 def find_picmg_interface_type(interface_type):
     return find_attribute(pyipmi.picmg.LinkDescriptor, interface_type,

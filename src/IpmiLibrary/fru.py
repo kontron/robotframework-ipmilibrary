@@ -199,3 +199,25 @@ class Fru:
         """
         value = self.fru_data_get_product_part_number(fru_id)
         asserts.fail_unless_equal(expected_value, value)
+
+    def fru_data_get_picmg_multirecord_from_type(self, record_type, index=0, fru_id=0):
+        """Returns the PICMG mulirecord specified by type.
+        supported types are:
+        `record_type`: Power Module Capability
+        `index` specifies the index of the requested record.
+        `fru_id`
+        """
+        record_type = find_picmg_multirecord_id(record_type)
+        index = int_any_base(index)
+        fru_id = int_any_base(fru_id)
+        fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
+
+        found_num = 0
+        for record in fru.multirecord_area.records:
+            if ((record.record_type_id, record.picmg_record_type_id) ==
+                (pyipmi.fru.FruDataMultiRecord.TYPE_OEM_PICMG, record_type)):
+                if found_num == index:
+                    return record
+
+        raise AssertionError('Record type %s index=%s not found for fru_id=%s'
+                 % (record_type, index, fru_id))
