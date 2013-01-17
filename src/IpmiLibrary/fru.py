@@ -109,6 +109,12 @@ class Fru:
         asserts.fail_unless_equal(expected_length, tlv[0] & 0x3f, msg)
         asserts.fail_unless_equal(expected_data, tlv[1:], msg)
 
+    def fru_data_get_inventory(self, fru_id=0):
+        """Return the Fru Data for the given fru_id.
+        """
+        fru_id = int_any_base(fru_id)
+        return self._fru_data(fru_id)
+
     def fru_data_get_board_manufacturer(self, fru_id=0):
         """Returns the Board Manufacturer.
         """
