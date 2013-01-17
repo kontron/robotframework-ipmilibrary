@@ -136,8 +136,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         ipmi.target = pyipmi.Target(target_address)
         ipmi.target.set_routing_information(routing_information)
 
-        self._info('Opening IPMI connection to %s:%s' % (host,
-            target_address))
+        self._info('Opening IPMI connection to %s:%d/%02Xh' % (host,
+            port, target_address))
 
         ipmi.session.establish()
 
