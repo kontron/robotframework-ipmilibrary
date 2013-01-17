@@ -14,6 +14,9 @@ from utils import int_any_base
 from mapping import *
 
 class Picmg:
+    def get_picmg_properties(self):
+        return self._ipmi.get_picmg_properties()
+
     def activate_fru(self, fruid=0):
         """Sends a _Set FRU Activation_ command to the given fru."""
         fruid = int(fruid)
