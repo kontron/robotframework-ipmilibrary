@@ -65,6 +65,12 @@ class Sdr:
             if sdr.type == record_type:
                 return sdr
 
+    def select_sdr_by_record_id(self, record_id):
+        """Selects a SDR by its record id.
+        """
+        record_id = int_any_base(record_id)
+        self._selected_sdr = self._find_sdr_by_record_id(record_id)
+
     def select_sdr_by_name(self, name):
         """Selects a SDR by its name.
         """
@@ -125,6 +131,14 @@ class Sdr:
         actual_entity_id = self._selected_sdr.entity_id
 
         asserts.fail_unless_equal(expected_entity_id, actual_entity_id, msg)
+
+    def selected_sdr_entity_instance_should_be(self, expected_entity_instance,
+             msg=None):
+        expected_entity_instance = int_any_base(expected_entity_instance)
+        actual_entity_instance = self._selected_sdr.entity_instance
+
+        asserts.fail_unless_equal(expected_entity_instance,
+            actual_entity_instance, msg)
 
     def selected_sdr_type_should_be(self, expected_sdr_type, msg=None):
         """Fails unless the SDR type of the selected SDR matches the given
@@ -193,6 +207,11 @@ class Sdr:
             self._find_sdr_by_name(name)
         except:
             raise AssertionError('Sensor "%s" is not present' % name)
+
+    def get_sdr_instance_by_record_id(self, record_id):
+        """Returns the SDR object of the SDR with record id `record_id`.
+        """
+        return self._find_sdr_by_record_id(record_id)
 
     def get_sdr_instance(self, name):
         """Returns the SDR object of the SDR with name `name`.
