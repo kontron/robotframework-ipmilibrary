@@ -185,7 +185,7 @@ class Fru:
         """
         fru_id = int_any_base(fru_id)
         fru = pyipmi.fru.FruInventory(self._fru_data(fru_id))
-        return str(fru.product_info_area.product_name)
+        return str(fru.product_info_area.name)
 
     def fru_data_product_name_should_be(self, expected_value, fru_id=0):
         """Fails if the Product Name is not as expected.
