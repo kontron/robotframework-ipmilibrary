@@ -125,6 +125,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         target_address = int_any_base(target_address)
         user = str(user)
         password = str(password)
+        port = int_any_base(port)
 
         if alias:
             alias = str(alias)
