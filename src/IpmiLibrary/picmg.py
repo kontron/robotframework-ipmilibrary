@@ -106,6 +106,23 @@ class Picmg:
             function = ac._led.local_function
         asserts.fail_unless_equal(expected_function, function, msg, values)
 
+    def set_fru_led_state(self, fruid, ledid, state, color):
+        """Set the FRU LED State.
+        """
+
+        fruid = int(fruid)
+        ledid = int(ledid)
+        state = find_picmg_led_function(state)
+        color = find_picmg_led_color(color)
+
+        led = pyipmi.picmg.LedState()
+        led.fru_id = fruid
+        led.led_id = ledid
+        led.override_color = color
+        led.led_function = state
+
+        self._ipmi.set_led_state(led)
+
     def set_port_state(self, interface, channel, flags, link_type,
             link_type_ext, state, link_class=0):
         """Sends the "PICMG Set Portstate" command.
