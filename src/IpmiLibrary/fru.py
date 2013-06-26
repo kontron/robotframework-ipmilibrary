@@ -34,6 +34,14 @@ class Fru:
         self._cp['prefetched_fru_data'][fru_id] = \
                 self._ipmi.read_fru_data(fru_id=fru_id)
 
+    def get_fru_inventory_area_size(self, fru_id=0):
+        """Returns the FRU Inventory Area Info size.
+        """
+        fru_id = int_any_base(fru_id)
+        return self._ipmi.get_fru_inventory_area_size(fru_id)
+
+
+
     def read_fru_data(self, offset, count, fru_id=0):
         """Reads data bytes from FRU data area.
 
