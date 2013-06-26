@@ -278,7 +278,7 @@ class Sdr:
 
         sdr = self._find_sdr_by_name(name)
 
-        thresholds = self._ipmi.get_sensor_thresholds(sdr.number)
+        thresholds = self._ipmi.get_sensor_thresholds(sdr.number, sdr.owner_lun)
 
         converted_thresholds = {}
         for t in ('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'):
@@ -300,8 +300,8 @@ class Sdr:
         sdr = self._find_sdr_by_name(name)
         thresholds = {}
         thresholds[threshold] = sdr.convert_sensor_value_to_raw(value)
-        print thresholds
-        self._ipmi.set_sensor_thresholds(sdr.number, **thresholds)
+        self._ipmi.set_sensor_thresholds(sdr.number, sdr.owner_lun,
+                **thresholds)
 
     def wait_until_sensor_state_is(self, name, state, mask=0x7fff):
         """Wait until a sensor reaches the given state.
