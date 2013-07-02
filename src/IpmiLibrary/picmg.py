@@ -163,6 +163,61 @@ class Picmg:
         state = find_picmg_link_state(state)
         self._ipmi.set_port_state(link_descr, state)
 
+    def get_port_state(self, interface, channel):
+        """Returns the link and state of the interface link.
+
+        Example:
+        | ${link} | ${state}=  | Get Port State | FABRIC | 1 |
+        """
+
+        interface = find_picmg_interface_type(interface)
+        channel = int(channel)
+        return self._ipmi.get_port_state(channel, interface)
+
+    def port_state_should_be(self, interface, channel, expected_state):
+        """Fails if the returned port state is not equal the expected.
+        """
+
+        interface = find_picmg_interface_type(interface)
+        channel = int(channel)
+        expected_state = find_picmg_link_state(expected_state)
+        (link, state) = self._ipmi.get_port_state(channel, interface)
+        asserts.fail_unless_equal(expected_state, state)
+
+    def link_flags_should_be(self, interface, channel, expected_flags):
+        """Fails if the link flags does not match the expected flags.
+        """
+
+        interface = find_picmg_interface_type(interface)
+        channel = int(channel)
+        expected_flags = find_picmg_link_flags(expected_flags)
+        (link, state) = self._ipmi.get_port_state(channel, interface)
+        asserts.fail_unless_equal(expected_flags, link.link_flags)
+
+    def link_type_should_be(self, interface, channel, expected_type,
+                expected_ext):
+        """Fails if the link type is not as the expected.
+        """
+
+        interface = find_picmg_interface_type(interface)
+        channel = int(channel)
+        expected_type = find_picmg_link_type(expected_type)
+        expected_ext = find_picmg_link_type_extension(expected_ext)
+        (link, state) = self._ipmi.get_port_state(channel, interface)
+        asserts.fail_unless_equal(expected_type, link.type)
+        asserts.fail_unless_equal(expected_ext, link.extension)
+
+    def link_signaling_class_should_be(self, interface, channel,
+                expected_class):
+        """Fails if the link type is not as the expected.
+        """
+
+        interface = find_picmg_interface_type(interface)
+        channel = int(channel)
+        expected_class = find_picmg_link_signaling_class(expected_class)
+        (link, state) = self._ipmi.get_port_state(channel, interface)
+        asserts.fail_unless_equal(expected_class, link.sig_class)
+
     def get_power_level(self, fruid, power_type, offset):
         """return the specified power level for the fru
         `fruid`
@@ -215,3 +270,14 @@ class Picmg:
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
         self._ipmi.get_signaling_class(interfac, channel)
+
+    def get_pm_global_status(self):
+        """
+        """
+        return self._ipmi.get_pm_global_status()
+
+    def get_pm_channel_status(self, channel_number):
+        """
+        """
+        channel_number = int_any_base(channel_number)
+        return self._ipmi.get_power_channel_status(channel_number)
