@@ -66,5 +66,9 @@ def find_sensor_type(sensor_type):
 def find_lan_configuration_parameter(parameter):
     return find_attribute(pyipmi.lan, parameter, 'LAN_PARAMETER_')
 
+def find_lan_ip_source(source):
+    return find_attribute(pyipmi.lan, source,
+            'LAN_PARAMETER_IP_ADDRESS_SOURCE_')
+
 def find_hpm_component_property(property):
     return find_attribute(pyipmi.hpm, property, 'PROPERTY_')
