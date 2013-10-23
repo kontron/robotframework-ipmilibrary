@@ -56,6 +56,7 @@ class Sel:
     def clear_sel(self):
         """Clears the sensor event log."""
 
+        self._invalidate_prefetched_sel_records()
         self._ipmi.clear_sel()
 
     def log_sel(self):
