@@ -55,7 +55,6 @@ class Sel:
 
     def clear_sel(self):
         """Clears the sensor event log."""
-
         self._invalidate_prefetched_sel_records()
         self._ipmi.clear_sel()
 
@@ -356,6 +355,11 @@ class Sel:
         actual_type = self._selected_sel_record.sensor_type
 
         asserts.fail_unless_equal(expected_type, actual_type, msg)
+
+    def get_sensor_number_from_selected_sel_record(self):
+        """Returns the sensor number of the selected SEL record.
+        """
+        return self._selected_sel_record.sensor_number
 
     def set_event_receiver(self, ipmb_i2c_addr, lun=0):
         """
