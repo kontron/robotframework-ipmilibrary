@@ -361,6 +361,11 @@ class Sel:
         """
         return self._selected_sel_record.sensor_number
 
+    def get_selected_sel_entry_instance(self):
+        """Returns the selected SEL entry instance
+        """
+        return self._selected_sel_record
+
     def set_event_receiver(self, ipmb_i2c_addr, lun=0):
         """
         """
