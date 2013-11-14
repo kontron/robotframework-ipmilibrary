@@ -96,6 +96,15 @@ class Sel:
         records = self._find_sel_records_by_sensor_type(type)
         asserts.fail_unless_equal(count, len(records), msg)
 
+    def sel_should_contain_sensor_type(self, type, msg=None):
+        """Fails if SEL contains the given sensor type.
+        """
+
+        type = find_sensor_type(type)
+        records = self._find_sel_records_by_sensor_type(type)
+        if len(records) == 0:
+            raise AssertionError('SEL doesn`t contain sensor type %s' % type)
+
     def sel_should_not_contain_sensor_type(self, type, msg=None):
         """Fails if SEL contains the given sensor type.
         """
