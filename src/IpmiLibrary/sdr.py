@@ -358,6 +358,7 @@ class Sdr:
                 if sdr.device_id_string == name:
                     self._cp['prefetched_hotswap_sdr'][name] = sdr
                     return
+        raise AssertionError('Hotswap Sensor %s not found' % name)
 
     def _find_hotswap_sdr_by_name(self, name):
         if ('prefetched_hotswap_sdr' in self._cp and
