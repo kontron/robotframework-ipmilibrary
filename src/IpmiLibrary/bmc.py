@@ -4,6 +4,7 @@
 # author: Michael Walle <michael.walle@kontron.com>
 # author: Heiko Thiery <heiko.thiery@kontron.com>
 #
+import array
 from mapping import *
 from robot import utils
 from robot.utils import asserts
@@ -53,6 +54,38 @@ class Bmc:
         device_id = self._ipmi.get_device_id()
         supports = device_id.supports_function(supported_function)
         asserts.fail_unless_equal(supports, False, msg=msg)
+
+    def i2c_write_read(self, bus_type, bus_id, channel, address, count, *data):
+        """Sends a _Master Write-Read_ command to the given bus.
+        """
+        bus_type = int_any_base(bus_type)
+        bus_id = int_any_base(bus_id)
+        channel = int_any_base(channel)
+        address = int_any_base(address)
+        count = int_any_base(count)
+        if isinstance(data, basestring):
+            print 'a', data
+            data = [int_any_base(d) for d in data.split(' ')]
+        elif isinstance(data, tuple) or isinstance(data, list):
+            print 'b', data
+            data = [int_any_base(d) for d in data]
+        else:
+            print 'c', data
+            data = [int_any_base(data)]
+        data = array.array('c', [chr(c) for c in data])
+        rsp = self._ipmi.i2c_write_read(bus_type, bus_id, channel, address,
+                count, data)
+        return rsp
+
+    def i2c_write(self, bus_type, bus_id, channel, address, *data):
+        """Sends a _Master Write-Read_ command to the given bus.
+        """
+        self.i2c_write_read(bus_type, bus_id, channel, address, 0, data)
+
+    def i2c_read(self, bus_type, bus_id, channel, address, count):
+        """Sends a _Master Write-Read_ command to the given bus.
+        """
+        return self.i2c_write_read(bus_type, bus_id, channel, address, count, None)
 
     def start_watchdog_timer(self, value, action="Hard Reset",
             timer_use="SMS OS"):
