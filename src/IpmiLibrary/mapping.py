@@ -72,3 +72,6 @@ def find_lan_ip_source(source):
 
 def find_hpm_component_property(property):
     return find_attribute(pyipmi.hpm, property, 'PROPERTY_')
+
+def find_hpm_upgrade_action(action):
+    return find_attribute(pyipmi.hpm, action, 'ACTION_')
