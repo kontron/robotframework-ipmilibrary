@@ -329,7 +329,8 @@ class Sel:
                 | ord(record.event_data[1]) << 8
                 | ord(record.event_data[2]))
         actual_value = actual_value & mask
-
+        expected_value = '0x%x' % expected_value
+        actual_value = '0x%x' % actual_value
         asserts.fail_unless_equal(expected_value, actual_value, msg)
 
     def selected_sel_records_event_direction_should_be(self,
