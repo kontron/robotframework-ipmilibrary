@@ -13,6 +13,11 @@
 # limitations under the License.
 
 class Chassis:
+    def issue_chassis_power_up(self):
+        """Sends a _chassis power up_ command.
+        """
+        self._ipmi.chassis_control_power_up()
+
     def issue_chassis_power_down(self):
         """Sends a _chassis power down_ command.
         """
