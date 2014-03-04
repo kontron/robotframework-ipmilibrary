@@ -66,6 +66,10 @@ class Sel:
         self._invalidate_prefetched_sel_records()
         self._ipmi.clear_sel()
 
+    def get_sel_entries_count(self):
+        """Returns the number of entries in SEL."""
+        return self._ipmi.get_sel_entries_count()
+
     def log_sel(self):
         """Dumps the sensor event log and logs it."""
 
