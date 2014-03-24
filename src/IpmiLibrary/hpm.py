@@ -68,7 +68,7 @@ class Hpm:
         return self._ipmi.get_target_upgrade_capabilities()
 
     def hpm_get_component_property(self, component_name, property):
-        """Return the component property.
+        """Return the component property as string.
 
         `component_name` is the description name of the component.
                     e.g.: "IPMC", "MMC", "Boot block"
