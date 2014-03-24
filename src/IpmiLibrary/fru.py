@@ -45,7 +45,7 @@ class Fru:
         """Returns the FRU Inventory Area Info size.
         """
         fru_id = int_any_base(fru_id)
-        return self._ipmi.get_fru_inventory_area_size(fru_id)
+        return self._ipmi.get_fru_inventory_area_info(fru_id)
 
 
 
