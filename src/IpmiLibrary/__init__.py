@@ -119,8 +119,15 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
                 % (utils.secs_to_timestr(timeout)))
 
     def open_ipmi_connection(self, host, target_address, user='', password='',
-            routing_information=[(0x20,0)], port=623, interface='ipmitool',
+            routing_information=[(0x20,0)], port=623, interface=None,
             alias=None):
+        """*DEPRECATED* Please use `Open IPMI LAN Connection`.
+        """
+        return self.open_ipmi_connection(host, target_address, user, password,
+            routing_information, port, alias)
+
+    def open_ipmi_lan_connection(self, host, target_address, user='', password='',
+            routing_information=[(0x20,0)], port=623, alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -137,7 +144,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         if alias:
             alias = str(alias)
 
-        interface = pyipmi.interfaces.create_interface(interface)
+        interface = pyipmi.interfaces.create_interface('ipmitool')
         ipmi = pyipmi.create_connection(interface)
         ipmi.session.set_session_type_rmcp(host, port)
         ipmi.session.set_auth_type_user(user, password)
@@ -148,6 +155,42 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             port, target_address))
 
         ipmi.session.establish()
+
+        connection = IpmiConnection(ipmi)
+
+        self._active_connection = connection
+
+        return self._cache.register(connection, alias)
+
+    def open_ipmi_aardvark_connection(self, port_or_serial, target_address,
+            routing_information=[(0x20, 0)], alias=None):
+        """Opens an Aardvark connection to the IPMB.
+        `target_address` is the IPMB address to which the command should be
+        sent. With the `serial_number` the aardvark device can be specified. If
+        `None` is set the first is selected.
+        """
+        target_address = int_any_base(target_address)
+
+        if isinstance(port_or_serial, basestring) and '-' in port_or_serial:
+            serial = port_or_serial
+            port = None
+            self._info('Opening Aardvark adapter with serial %s' %
+                    (port_or_serial,))
+        else:
+            port = int(port_or_serial)
+            serial = None
+            self._info('Opening Aardvark adapter on port %d' % (port,))
+
+        if alias:
+            alias = str(alias)
+
+        interface = pyipmi.interfaces.create_interface('aardvark',
+                port=port, serial_number=serial)
+        ipmi = pyipmi.create_connection(interface)
+        ipmi.target = pyipmi.Target(target_address)
+        ipmi.target.set_routing_information(routing_information)
+
+        self._info('Opening IPMI aardvark connection to %02Xh' % (target_address))
 
         connection = IpmiConnection(ipmi)
 
