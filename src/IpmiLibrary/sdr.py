@@ -110,7 +110,7 @@ class Sdr:
         mask = int_any_base(mask)
 
         self.sensor_state_should_be_equal(self._selected_sdr.device_id_string,
-		expected_state, self._selected_sdr, mask, msg)
+                expected_state, self._selected_sdr, mask, msg)
 
     def selected_sdr_sensor_reading_should_be_equal(self, expected_reading,
                 msg=None):
