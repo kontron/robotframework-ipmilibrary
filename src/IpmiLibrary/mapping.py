@@ -16,6 +16,7 @@ import pyipmi
 import pyipmi.picmg
 import pyipmi.bmc
 import pyipmi.sdr
+import pyipmi.sensor
 import pyipmi.event
 import pyipmi.constants
 import pyipmi.hpm
@@ -75,7 +76,7 @@ def find_event_direction(direction):
     return find_attribute(pyipmi.event, direction, 'EVENT_')
 
 def find_sensor_type(sensor_type):
-    return find_attribute(pyipmi.sdr, sensor_type, 'SENSOR_TYPE_')
+    return find_attribute(pyipmi.sensor, sensor_type, 'SENSOR_TYPE_')
 
 def find_lan_configuration_parameter(parameter):
     return find_attribute(pyipmi.lan, parameter, 'LAN_PARAMETER_')
