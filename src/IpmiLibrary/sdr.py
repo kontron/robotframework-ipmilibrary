@@ -30,7 +30,7 @@ class Sdr:
         if 'prefetched_sdr_list' in self._cp:
             return self._cp['prefetched_sdr_list']
         else:
-            return self._ipmi.get_sdr_list()
+            return self._ipmi.get_device_sdr_list()
 
     @property
     def _selected_sdr(self):
@@ -360,7 +360,7 @@ class Sdr:
         if ('prefetched_hotswap_sdr' in self._cp and
             name in self._cp['prefetched_hotswap_sdr']):
                 del self._cp['prefetched_hotswap_sdr'][name]
-        for sdr in self._ipmi.sdr_entries():
+        for sdr in self._ipmi.device_sdr_entries():
             if (sdr.type is pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD or \
                 sdr.type is pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
                 if sdr.device_id_string == name:
