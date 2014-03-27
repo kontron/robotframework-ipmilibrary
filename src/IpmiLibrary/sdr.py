@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import time
+import array
 
 from robot import utils
 from robot.utils import asserts
@@ -25,12 +26,91 @@ from mapping import *
 
 
 class Sdr:
+
+    def set_sdr_source(self, source):
+        """Select the SDR source. This specifies if the keywords that fetch and
+        check SDRs collect the SDR data from the sensor device or form the SDR
+        repository device.
+
+        Example:
+        | Set SDR Source | Sensor Device  |
+        | Set SDR Source | SDR Repository |
+        """
+        if source.lower() in ('sensor device', 'sdr repository'):
+            self._cp['sdr_source'] = source.lower()
+
+    def _get_sdr_list(self):
+        if self._cp['sdr_source'] == 'sensor device':
+            return self._ipmi.get_device_sdr_list()
+        elif self._cp['sdr_source'] == 'sdr repository':
+            return self._ipmi.get_repository_sdr_list()
+        else:
+            raise RuntimeError
+
+    def _sdr_entries(self):
+        if self._cp['sdr_source'] == 'sensor device':
+            return self._ipmi.device_sdr_entries()
+        elif self._cp['sdr_source'] == 'sdr repository':
+            return self._ipmi.sdr_repository_entries()
+        else:
+            raise RuntimeError
+
+
+    def get_sdr_repository_info(self):
+        """Returns the SDR Repository Info.
+        """
+        return self._ipmi.get_sdr_repository_info()
+
+    def get_sdr_repository_allocation_info(self):
+        """Returns the SDR Repository Allocation Info.
+        """
+        return self._ipmi.get_sdr_repository_allocation_info()
+
+    def reserve_sdr_repository(self):
+        """Returns the SDR Repository Reservation Id.
+        """
+        return self._ipmi.reserve_sdr_repository()
+
+    def clear_sdr_repository(self):
+        """Clear the SDR repository and wait until erasure is finished.
+        """
+        return self._ipmi.clear_sdr_repository()
+
+    def delete_sdr(self, record_id):
+        """Delete the SDR from repository specified by 'record_id'.
+        """
+        record_id = int_any_base(record_id)
+        return self._ipmi.delete_sdr(record_id)
+
+    def run_initialization_agent(self):
+        self._ipmi.start_initialization_agent()
+
+    def get_initialization_agent_status(self):
+        return self._ipmi.get_initialization_agent_status()
+
+    def partial_add_sdr(self, reservation_id,
+            record_id, offset, progress, data):
+        record_id = int_any_base(record_id)
+        offset = int_any_base(offset)
+        progress = int_any_base(progress)
+
+        if isinstance(data, basestring):
+            data = [int_any_base(d) for d in data.split(' ')]
+        elif isinstance(data, list):
+            data = data
+        else:
+            data = [int_any_base(data)]
+        data = array.array('c', [chr(c) for c in data])
+
+        return self._ipmi.partial_add_sdr(
+                reservation_id, record_id, offset, progress, data)
+
     @property
     def _sdr_list(self):
         if 'prefetched_sdr_list' in self._cp:
             return self._cp['prefetched_sdr_list']
         else:
-            return self._ipmi.get_device_sdr_list()
+            return self._get_sdr_list()
 
     @property
     def _selected_sdr(self):
@@ -39,7 +119,7 @@ class Sdr:
         except KeyError:
             AssertionError('No SDR selected.')
 
-    @_selected_sdr.setter
+    _selected_sdr.setter
     def _selected_sdr(self, value):
         self._cp['selected_sdr'] = value
 
@@ -51,7 +131,7 @@ class Sdr:
 
     def log_sdr_list(self):
         print '*INFO* SDR list'
-        for sdr in self._sdr_list():
+        for sdr in self._sdr_list:
             print `sdr`
 
     def _find_sdr_by_name(self, name):
@@ -360,7 +440,7 @@ class Sdr:
         if ('prefetched_hotswap_sdr' in self._cp and
             name in self._cp['prefetched_hotswap_sdr']):
                 del self._cp['prefetched_hotswap_sdr'][name]
-        for sdr in self._ipmi.device_sdr_entries():
+        for sdr in self._sdr_entries():
             if (sdr.type is pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD or \
                 sdr.type is pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
                 if sdr.device_id_string == name:

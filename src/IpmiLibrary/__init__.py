@@ -76,6 +76,8 @@ class IpmiConnection():
         self._selected_sel_record = None
         self._sdr_list = []
         self._selected_sdr = None
+        self._sdr_source = 'device'
+        self._properties['sdr_source'] = 'device'
 
     def close(self):
         self._ipmi.session.close()
