@@ -17,7 +17,7 @@ import time
 #from sel import SelRecord
 from subprocess import Popen, PIPE
 
-from robot import utils
+from robot.utils import robottime
 from robot.utils import asserts
 from robot.utils.connectioncache import ConnectionCache
 from robot.output import LOGGER
@@ -106,7 +106,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         (e.g. 1 minute 20 seconds) that is explained in the User Guide.
         """
 
-        timeout = utils.timestr_to_secs(timeout)
+        timeout = robottime.timestr_to_secs(timeout)
 
         start_time = time.time()
         while time.time() < start_time + timeout:
@@ -118,7 +118,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             time.sleep(self._poll_interval)
 
         raise AssertionError('RMCP not ready in %s.'
-                % (utils.secs_to_timestr(timeout)))
+                % (robottime.secs_to_timestr(timeout)))
 
     def open_ipmi_connection(self, host, target_address, user='', password='',
             routing_information=[(0x20,0)], port=623, interface=None,
@@ -267,8 +267,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         """
 
         old = getattr(self, '_timeout', 3.0)
-        self._timeout = utils.timestr_to_secs(timeout)
-        return utils.secs_to_timestr(old)
+        self._timeout = robottime.timestr_to_secs(timeout)
+        return robottime.secs_to_timestr(old)
 
     def set_poll_interval(self, poll_interval):
         """Sets the poll interval used in `Wait Until X` keywords to the given
@@ -282,8 +282,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         """
 
         old = getattr(self, '_poll_interval', 1.0)
-        self._poll_interval = utils.timestr_to_secs(poll_interval)
-        return utils.secs_to_timestr(old)
+        self._poll_interval = robottime.timestr_to_secs(poll_interval)
+        return robottime.secs_to_timestr(old)
 
     def send_raw_command(self, *bytes):
         """Sends a raw IPMI command.
