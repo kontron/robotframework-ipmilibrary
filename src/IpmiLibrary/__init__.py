@@ -84,6 +84,10 @@ class IpmiConnection():
 
 
 class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
+
+    ROBOT_LIBRARY_VERSION = '0.0.1'
+    ROBOT_LIBRARY_SCOPE = 'TEST SUITE'
+
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._cache = ConnectionCache()
         self._timeout = timeout
