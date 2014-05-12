@@ -169,13 +169,14 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         return self._cache.register(connection, alias)
 
     def open_ipmi_aardvark_connection(self, port_or_serial, target_address,
-            routing_information=[(0x20, 0)], alias=None):
+        slave_address=0x20,  routing_information=[(0x20, 0)], alias=None):
         """Opens an Aardvark connection to the IPMB.
         `target_address` is the IPMB address to which the command should be
         sent. With the `serial_number` the aardvark device can be specified. If
         `None` is set the first is selected.
         """
         target_address = int_any_base(target_address)
+        slave_address = int_any_base(slave_address)
 
         if isinstance(port_or_serial, basestring) and '-' in port_or_serial:
             serial = port_or_serial
@@ -191,7 +192,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             alias = str(alias)
 
         interface = pyipmi.interfaces.create_interface('aardvark',
-                port=port, serial_number=serial)
+                slave_address=slave_address, port=port, serial_number=serial)
         ipmi = pyipmi.create_connection(interface)
         ipmi.target = pyipmi.Target(target_address)
         ipmi.target.set_routing_information(routing_information)
