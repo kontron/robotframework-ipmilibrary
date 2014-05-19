@@ -249,6 +249,9 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             else:
                 return
 
+    def is_ipmc_accessible(self):
+        self._ipmi.is_ipmc_accessible()
+
     def _run_ipmitool_checked(self, cmd):
         """*DEPRECATED*"""
         output, rc = self._ipmi.interface._run_ipmitool(
