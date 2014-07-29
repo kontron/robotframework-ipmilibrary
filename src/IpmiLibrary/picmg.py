@@ -289,3 +289,57 @@ class Picmg:
         """
         channel_number = int_any_base(channel_number)
         return self._ipmi.get_power_channel_status(channel_number)
+
+    def prefetch_hotswap_sdr(self, entity):
+        (entity_id, entity_instance) = entity.split(':')
+        entity_id = find_entity_type_id(entity_id)
+        entity_instance = int_any_base(entity_instance)
+        if 'prefetched_hotswap_sdr' not in self._cp:
+            self._cp['prefetched_hotswap_sdr'] = {}
+
+        for sdr in self._sdr_entries():
+            if (sdr.type is pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD or \
+                sdr.type is pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
+                if sdr.entity_id == entity_id and \
+                        sdr.entity_instance == entity_instance:
+                    self._cp['prefetched_hotswap_sdr'][sdr.device_id_string] = sdr
+                    print sdr
+                    return
+        raise AssertionError('Hotswap Sensor for entity %s %s not found' \
+                % (entity_id, entity_instance))
+
+    def _find_hotswap_sdr_by_name(self, name):
+        if ('prefetched_hotswap_sdr' in self._cp and
+            name in self._cp['prefetched_hotswap_sdr']):
+            return self._cp['prefetched_hotswap_sdr'][name]
+        else:
+            self._info('HS SDR %s not found' % name)
+
+
+    def _find_hotswap_sdr_by_entity(self, entity):
+        (entity_id, entity_instance) = entity.split(':')
+        entity_id = find_entity_type_id(entity_id)
+        entity_instance = int_any_base(entity_instance)
+        if 'prefetched_hotswap_sdr' in self._cp:
+            for name in self._cp['prefetched_hotswap_sdr']:
+                hs_sdr = self._cp['prefetched_hotswap_sdr'][name]
+                if hs_sdr.entity_id == entity_id and \
+                        hs_sdr.entity_instance == entity_instance:
+                    return hs_sdr
+        else:
+            self._info('HS SDR not found')
+
+    def _get_hotswap_state(self, sdr):
+        state = self.get_sensor_state(None, sdr)&0xff
+
+        if state & state-1 is not 0:
+            raise AssertionError('sensor reports invalid state 0x%02x'
+                    % (state))
+
+        for s in xrange(7, -1, -1):
+            if state & (1<<s):
+                return s
+
+    def get_hotswap_state(self, entity):
+        sdr = self._find_hotswap_sdr_by_entity(entity)
+        return self._get_hotswap_state(sdr)
