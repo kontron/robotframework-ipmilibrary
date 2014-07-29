@@ -249,6 +249,10 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             else:
                 return
 
+    def set_target_address(self, target_address):
+        target_address = int_any_base(target_address)
+        self._ipmi.target = pyipmi.Target(target_address)
+
     def is_ipmc_accessible(self):
         self._ipmi.is_ipmc_accessible()
 
