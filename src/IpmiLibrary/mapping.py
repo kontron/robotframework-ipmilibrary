@@ -37,6 +37,9 @@ def find_picmg_led_function(function):
 def find_sdr_record_type(record_type):
     return find_attribute(pyipmi.sdr, record_type, 'SDR_TYPE_')
 
+def find_sdr_sensor_type(sensor_type):
+    return find_attribute(pyipmi.sensor, sensor_type, 'SENSOR_TYPE_')
+
 def find_entity_type_id(entity_id):
     return find_attribute(pyipmi.constants, entity_id, 'ENTITY_TYPE_')
 

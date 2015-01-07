@@ -132,7 +132,7 @@ class Sdr:
     def log_sdr_list(self):
         print '*INFO* SDR list'
         for sdr in self._sdr_list:
-            print `sdr`
+            print sdr
 
     def _find_sdr_by_name(self, name):
         for sdr in self._sdr_list:
@@ -153,6 +153,12 @@ class Sdr:
             if sdr.type == record_type:
                 return sdr
 
+    def _find_sdr_by_sensor_type(self, sensor_type):
+        for sdr in self._sdr_list:
+            if hasattr(sdr, 'sensor_type_code'):
+                if sdr.sensor_type_code == sensor_type:
+                    return sdr
+
     def select_sdr_by_record_id(self, record_id):
         """Selects a SDR by its record id.
         """
@@ -172,6 +178,14 @@ class Sdr:
 
         record_type = find_sdr_record_type(record_type)
         self._selected_sdr = self._find_sdr_by_record_type(record_type)
+
+    def select_sdr_by_sensor_type(self, sensor_type):
+        """Selects SDR by its sensor type.
+
+        `sensor_type`
+        """
+        sensor_type = find_sdr_sensor_type(sensor_type)
+        self._selected_sdr = self._find_sdr_by_sensor_type(sensor_type)
 
     def selected_sdr_name_should_be_equal(self, expected_name, msg=None):
         """Fails unless the name of the selected sensor matches the given one.
