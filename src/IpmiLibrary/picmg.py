@@ -127,7 +127,7 @@ class Picmg:
         led.fru_id = fruid
         led.led_id = ledid
         led.override_color = color
-        led.led_function = state
+        led.local_function = state
 
         self._ipmi.set_led_state(led)
 
