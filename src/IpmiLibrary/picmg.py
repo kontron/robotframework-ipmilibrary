@@ -291,6 +291,20 @@ class Picmg:
         return self._ipmi.get_power_channel_status(channel_number)
 
     def prefetch_hotswap_sdr(self, entity):
+        """Prefetch the entities hotswap sensor SDR
+        Entity can be specified by 'entitiy_id:entity_instance'
+
+        Valid entitiy_id:
+            Power Module= 0x0a
+            Cooling Unit = 0x1e
+            Picmg Front Board= 0xa0
+            Picmg Rear Transition Module= 0xc0
+            Picmg Advanced MC = 0xc1
+            Picmg Microtca Carrier Hub = 0xc2
+            Picmg Shelf Management Controller = 0xf0
+            Picmg FIlteration Unit = 0xf1
+            Picmg Shelf FRU Information = 0xf2
+        """
         (entity_id, entity_instance) = entity.split(':')
         entity_id = find_entity_type_id(entity_id)
         entity_instance = int_any_base(entity_instance)
@@ -300,6 +314,9 @@ class Picmg:
         for sdr in self._sdr_entries():
             if (sdr.type is pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD or \
                 sdr.type is pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
+                if sdr.sensor_type_code != \
+                        pyipmi.sensor.SENSOR_TYPE_FRU_HOT_SWAP:
+                    continue
                 if sdr.entity_id == entity_id and \
                         sdr.entity_instance == entity_instance:
                     self._cp['prefetched_hotswap_sdr'][sdr.device_id_string] = sdr
