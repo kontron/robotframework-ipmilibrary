@@ -256,7 +256,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         self._ipmi.target = pyipmi.Target(target_address)
 
     def is_ipmc_accessible(self):
-        self._ipmi.is_ipmc_accessible()
+        return self._ipmi.is_ipmc_accessible()
 
     def _run_ipmitool_checked(self, cmd):
         """*DEPRECATED*"""
