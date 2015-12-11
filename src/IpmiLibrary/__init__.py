@@ -336,7 +336,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         cc = rsp.completion_code
         msg = 'Command returned with return completion code 0x%02x, ' \
             'but should be 0x%02x' % (cc, expected_cc)
-        asserts.fail_unless_equal(expected_cc, cc, msg, values=False)
+        asserts.assert_equal(expected_cc, cc, msg, values=False)
         return rsp
 
     def create_message_request(self, name):

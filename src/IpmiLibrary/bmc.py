@@ -35,7 +35,7 @@ class Bmc:
         """
         product_id = int_any_base(product_id)
         device_id = self._ipmi.get_device_id()
-        asserts.fail_unless_equal(device_id.product_id, product_id)
+        asserts.assert_equal(device_id.product_id, product_id)
 
     def manufacturer_id_should_be(self, manufacturer_id):
         """Fails if the GetDeviceID command response does not contain
@@ -43,7 +43,7 @@ class Bmc:
         """
         manufacturer_id = int_any_base(manufacturer_id)
         device_id = self._ipmi.get_device_id()
-        asserts.fail_unless_equal(device_id.manufacturer_id, manufacturer_id)
+        asserts.assert_equal(device_id.manufacturer_id, manufacturer_id)
 
     def device_should_support(self, supported_function, msg=None):
         """The device can support the following functions:
@@ -52,7 +52,7 @@ class Bmc:
         """
         device_id = self._ipmi.get_device_id()
         supports = device_id.supports_function(supported_function)
-        asserts.fail_unless_equal(supports, True, msg=msg)
+        asserts.assert_equal(supports, True, msg=msg)
 
     def device_should_not_support(self, supported_function, msg=None):
         """The device can support the following functions:
@@ -61,7 +61,7 @@ class Bmc:
         """
         device_id = self._ipmi.get_device_id()
         supports = device_id.supports_function(supported_function)
-        asserts.fail_unless_equal(supports, False, msg=msg)
+        asserts.assert_equal(supports, False, msg=msg)
 
     def i2c_write_read(self, bus_type, bus_id, channel, address, count, *data):
         """Sends a _Master Write-Read_ command to the given bus.
@@ -162,7 +162,7 @@ class Bmc:
         """
         action = find_watchdog_action(action)
         config = self._ipmi.get_watchdog_timer()
-        asserts.fail_unless_equal(action, config.timeout_action, msg)
+        asserts.assert_equal(action, config.timeout_action, msg)
 
     def watchdog_timer_use_should_be(self, timer_use, msg=None):
         """Fails if the IPMI Watchdog timer use is not `timer_use`
@@ -171,19 +171,19 @@ class Bmc:
         """
         timer_use = find_watchdog_timer_use(timer_use)
         config = self._ipmi.get_watchdog_timer()
-        asserts.fail_unless_equal(timer_use, config.timer_use, msg)
+        asserts.assert_equal(timer_use, config.timer_use, msg)
 
     def watchdog_initial_timeout_value_should_be(self, value, msg=None):
         """
         """
         value = int_any_base(value)
         config = self._ipmi.get_watchdog_timer()
-        asserts.fail_unless_equal(value, config.initial_countdown, msg)
+        asserts.assert_equal(value, config.initial_countdown, msg)
 
     def watchdog_should_be_started(self, msg=None):
         config = self._ipmi.get_watchdog_timer()
-        asserts.fail_unless(config.is_running, msg)
+        asserts.assert_true(config.is_running, msg)
 
     def watchdog_should_be_stopped(self, msg=None):
         config = self._ipmi.get_watchdog_timer()
-        asserts.fail_if(config.is_running, msg)
+        asserts.assert_false(config.is_running, msg)

@@ -56,7 +56,7 @@ class Hpm:
         image = self._ipmi.load_upgrade_image(filename)
 
         value = getattr(image.header, field)
-        asserts.fail_unless_equal(expected_value, value)
+        asserts.assert_equal(expected_value, value)
 
     def hpm_get_image_upgrade_version(self, filename):
         version = self._ipmi.get_upgrade_version_from_file(filename)

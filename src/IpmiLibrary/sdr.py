@@ -192,7 +192,7 @@ class Sdr:
         """
 
         actual_name = self._selected_sdr.device_id_string
-        asserts.fail_unless_equal(expected_name, actual_name, msg)
+        asserts.assert_equal(expected_name, actual_name, msg)
 
     def selected_sdr_sensor_state_should_be_equal(self, expected_state,
                 mask=0x7fff, msg=None):
@@ -232,14 +232,14 @@ class Sdr:
         expected_entity_id = find_entity_type_id(expected_entity_id)
         actual_entity_id = self._selected_sdr.entity_id
 
-        asserts.fail_unless_equal(expected_entity_id, actual_entity_id, msg)
+        asserts.assert_equal(expected_entity_id, actual_entity_id, msg)
 
     def selected_sdr_entity_instance_should_be(self, expected_entity_instance,
              msg=None):
         expected_entity_instance = int_any_base(expected_entity_instance)
         actual_entity_instance = self._selected_sdr.entity_instance
 
-        asserts.fail_unless_equal(expected_entity_instance,
+        asserts.assert_equal(expected_entity_instance,
             actual_entity_instance, msg)
 
     def selected_sdr_type_should_be(self, expected_sdr_type, msg=None):
@@ -255,7 +255,7 @@ class Sdr:
         expected_sdr_type = find_sdr_record_type(expected_sdr_type)
         actual_sdr_type = self._selected_sdr.type
 
-        asserts.fail_unless_equal(expected_sdr_type, actual_sdr_type)
+        asserts.assert_equal(expected_sdr_type, actual_sdr_type)
 
     def get_sensor_number_for_sensor_name(self, name, sdr=None):
         """Return the sensor number that is specified by name.
@@ -285,7 +285,7 @@ class Sdr:
         expected_state = expected_state & mask
         actual_state = actual_state & mask
 
-        asserts.fail_unless_equal(expected_state, actual_state, msg)
+        asserts.assert_equal(expected_state, actual_state, msg)
 
     def sensor_reading_should_be_equal(self, name, expected_reading, msg=None):
         """Fails unless the sensor reading of the sensor with name `name`
@@ -300,7 +300,7 @@ class Sdr:
             actual_reading = sdr.convert_sensor_reading(raw)
         else:
             actual_reading = None
-        asserts.fail_unless_equal(expected_value, actual_reading, msg)
+        asserts.assert_equal(expected_value, actual_reading, msg)
 
     def sdr_should_be_present(self, name):
         """Fails unless the SDR with the given name is present.

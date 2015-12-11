@@ -81,7 +81,7 @@ class Picmg:
         else:
             actual_color = self._cp['led_state'].local_color
 
-        asserts.fail_unless_equal(expected_color, actual_color, msg, values)
+        asserts.assert_equal(expected_color, actual_color, msg, values)
 
     def led_function_should_be(self, expected_function, msg=None, values=True):
         """Fails if Picmg FRU Led function is not as given value.
@@ -95,7 +95,7 @@ class Picmg:
         else:
             actual_function = self._cp['led_state'].local_function
 
-        asserts.fail_unless_equal(expected_function, actual_function, msg,
+        asserts.assert_equal(expected_function, actual_function, msg,
                 values)
 
     def led_state_should_be(self, expected_state, msg=None, values=True):
@@ -112,7 +112,7 @@ class Picmg:
             function = ac._led.override_function
         else:
             function = ac._led.local_function
-        asserts.fail_unless_equal(expected_function, function, msg, values)
+        asserts.assert_equal(expected_function, function, msg, values)
 
     def set_fru_led_state(self, fruid, ledid, state, color):
         """Set the FRU LED State.
@@ -190,7 +190,7 @@ class Picmg:
         channel = int(channel)
         expected_state = find_picmg_link_state(expected_state)
         (link, state) = self._ipmi.get_port_state(channel, interface)
-        asserts.fail_unless_equal(expected_state, state)
+        asserts.assert_equal(expected_state, state)
 
     def link_flags_should_be(self, interface, channel, expected_flags):
         """Fails if the link flags does not match the expected flags.
@@ -200,7 +200,7 @@ class Picmg:
         channel = int(channel)
         expected_flags = find_picmg_link_flags(expected_flags)
         (link, state) = self._ipmi.get_port_state(channel, interface)
-        asserts.fail_unless_equal(expected_flags, link.link_flags)
+        asserts.assert_equal(expected_flags, link.link_flags)
 
     def link_type_should_be(self, interface, channel, expected_type,
                 expected_ext):
@@ -212,8 +212,8 @@ class Picmg:
         expected_type = find_picmg_link_type(expected_type)
         expected_ext = find_picmg_link_type_extension(expected_ext)
         (link, state) = self._ipmi.get_port_state(channel, interface)
-        asserts.fail_unless_equal(expected_type, link.type)
-        asserts.fail_unless_equal(expected_ext, link.extension)
+        asserts.assert_equal(expected_type, link.type)
+        asserts.assert_equal(expected_ext, link.extension)
 
     def link_signaling_class_should_be(self, interface, channel,
                 expected_class):
@@ -224,7 +224,7 @@ class Picmg:
         channel = int(channel)
         expected_class = find_picmg_link_signaling_class(expected_class)
         (link, state) = self._ipmi.get_port_state(channel, interface)
-        asserts.fail_unless_equal(expected_class, link.sig_class)
+        asserts.assert_equal(expected_class, link.sig_class)
 
     def get_power_level(self, fruid, power_type, offset):
         """return the specified power level for the fru

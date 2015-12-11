@@ -95,7 +95,7 @@ class Sel:
         """Fails if the SEL does not contain `count` entries.
         """
         count = int(count)
-        asserts.fail_unless_equal(count, len(self._sel_records), msg)
+        asserts.assert_equal(count, len(self._sel_records), msg)
 
     def sel_should_contain_x_times_sensor_type(self, type, count, msg=None):
         """Fails if the SEL does not contain `count` times an event with the
@@ -106,7 +106,7 @@ class Sel:
         count = int(count)
 
         records = self._find_sel_records_by_sensor_type(type)
-        asserts.fail_unless_equal(count, len(records), msg)
+        asserts.assert_equal(count, len(records), msg)
 
     def sel_should_contain_sensor_type(self, type, msg=None):
         """Fails if SEL contains the given sensor type.
@@ -343,7 +343,7 @@ class Sel:
         actual_value = actual_value & mask
         expected_value = '0x%x' % expected_value
         actual_value = '0x%x' % actual_value
-        asserts.fail_unless_equal(expected_value, actual_value, msg)
+        asserts.assert_equal(expected_value, actual_value, msg)
 
     def selected_sel_records_event_direction_should_be(self,
             expected_direction, msg=None):
@@ -355,7 +355,7 @@ class Sel:
         expected_direction = find_event_direction(expected_direction)
         actual_direction = self._selected_sel_record.event_direction
 
-        asserts.fail_unless_equal(expected_direction, actual_direction, msg)
+        asserts.assert_equal(expected_direction, actual_direction, msg)
 
     def selected_sel_record_should_be_from_sensor_number(self, expected_number,
              msg=None):
@@ -366,7 +366,7 @@ class Sel:
         expected_number = int_any_base(expected_number)
         actual_number = self._selected_sel_record.sensor_number
 
-        asserts.fail_unless_equal(expected_number, actual_number, msg)
+        asserts.assert_equal(expected_number, actual_number, msg)
 
     def selected_sel_record_should_be_from_sensor_type(self, expected_type, msg=None):
         """Fails if the sensor type of the selected SEL record does not match
@@ -376,7 +376,7 @@ class Sel:
         expected_type = find_sensor_type(expected_type)
         actual_type = self._selected_sel_record.sensor_type
 
-        asserts.fail_unless_equal(expected_type, actual_type, msg)
+        asserts.assert_equal(expected_type, actual_type, msg)
 
     def get_sensor_number_from_selected_sel_record(self):
         """Returns the sensor number of the selected SEL record.
