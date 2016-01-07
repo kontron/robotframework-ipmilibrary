@@ -177,4 +177,4 @@ class Hpm:
         return self._ipmi.query_rollback_status()
 
     def hpm_initiate_manual_rollback(self):
-        return self._ipmi.initiate_maunal_rollback_and_wait()
+        return self._ipmi.initiate_manual_rollback_and_wait()
