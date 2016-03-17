@@ -290,8 +290,8 @@ class Picmg:
         channel_number = int_any_base(channel_number)
         return self._ipmi.get_power_channel_status(channel_number)
 
-    def prefetch_hotswap_sdr(self, entity):
-        """Prefetch the entities hotswap sensor SDR
+    def get_hotswap_sdr(self, entity):
+        """Get the entities hotswap sensor SDR
         Entity can be specified by 'entitiy_id:entity_instance'
 
         Valid entitiy_id:
@@ -308,22 +308,27 @@ class Picmg:
         (entity_id, entity_instance) = entity.split(':')
         entity_id = find_entity_type_id(entity_id)
         entity_instance = int_any_base(entity_instance)
+
+        for sdr in self._sdr_entries():
+            if (sdr.type is not pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD and \
+                    sdr.type is not pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
+                continue
+            if sdr.sensor_type_code != \
+                    pyipmi.sensor.SENSOR_TYPE_FRU_HOT_SWAP:
+                continue
+            if sdr.entity_id == entity_id and \
+                    sdr.entity_instance == entity_instance:
+                return sdr
+
+        raise AssertionError('Hotswap Sensor for entity %s %s not found' \
+                % (entity_id, entity_instance))
+
+    def prefetch_hotswap_sdr(self, entity):
         if 'prefetched_hotswap_sdr' not in self._cp:
             self._cp['prefetched_hotswap_sdr'] = {}
 
-        for sdr in self._sdr_entries():
-            if (sdr.type is pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD or \
-                sdr.type is pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
-                if sdr.sensor_type_code != \
-                        pyipmi.sensor.SENSOR_TYPE_FRU_HOT_SWAP:
-                    continue
-                if sdr.entity_id == entity_id and \
-                        sdr.entity_instance == entity_instance:
-                    self._cp['prefetched_hotswap_sdr'][sdr.device_id_string] = sdr
-                    print sdr
-                    return
-        raise AssertionError('Hotswap Sensor for entity %s %s not found' \
-                % (entity_id, entity_instance))
+        sdr = self.get_hotswap_sdr(entity)
+        self._cp['prefetched_hotswap_sdr'][sdr.device_id_string] = sdr
 
     def _find_hotswap_sdr_by_name(self, name):
         if ('prefetched_hotswap_sdr' in self._cp and
