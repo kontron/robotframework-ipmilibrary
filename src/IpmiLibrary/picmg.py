@@ -330,13 +330,22 @@ class Picmg:
         sdr = self.get_hotswap_sdr(entity)
         self._cp['prefetched_hotswap_sdr'][sdr.device_id_string] = sdr
 
-    def _find_hotswap_sdr_by_name(self, name):
-        if ('prefetched_hotswap_sdr' in self._cp and
-            name in self._cp['prefetched_hotswap_sdr']):
-            return self._cp['prefetched_hotswap_sdr'][name]
-        else:
-            self._info('HS SDR %s not found' % name)
+    def prefetch_all_hotswap_sdr(self):
+        """Scan all SDRs from sdr list for hotswap sensors and prefetch."""
 
+        if 'prefetched_hotswap_sdr' not in self._cp:
+            self._cp['prefetched_hotswap_sdr'] = {}
+
+        for sdr in self._sdr_entries():
+            if (sdr.type is not pyipmi.sdr.SDR_TYPE_FULL_SENSOR_RECORD and \
+                    sdr.type is not pyipmi.sdr.SDR_TYPE_COMPACT_SENSOR_RECORD):
+                continue
+            if sdr.sensor_type_code != \
+                    pyipmi.sensor.SENSOR_TYPE_FRU_HOT_SWAP:
+                continue
+
+            self._info('HS SDR %s found' % sdr.device_id_string)
+            self._cp['prefetched_hotswap_sdr'][sdr.device_id_string] = sdr
 
     def _find_hotswap_sdr_by_entity(self, entity):
         (entity_id, entity_instance) = entity.split(':')
