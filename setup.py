@@ -67,9 +67,6 @@ def main():
             ],
             packages = [ 'IpmiLibrary' ],
             install_requires = [ 'robotframework', 'python-ipmi' ]
-            cmdclass = {
-                'build_libdoc': run_build_libdoc,
-            },
     )
 
 if __name__ == '__main__':
