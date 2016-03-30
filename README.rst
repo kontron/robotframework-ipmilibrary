@@ -10,6 +10,13 @@ Requirements
 The pure pyhton IPMI library from https://github.com/kontron/python-ipmi is
 needed.
 
+Documentation
+-------------
+
+The most up-to-date keyword documentation can be found at http://kontron.github.io/robotframework-ipmilibrary/IpmiLibrary.html
+
+
+
 Contributing
 ------------
 
