@@ -21,9 +21,9 @@ after_script:
 - git push github gh-pages 2>&1 | grep -v http
 deploy:
   provider: pypi
-  user: mwalle
+  user: hthiery
   password:
-    secure: oyiryGHQlfYeGY0g5OQgh6gHAhmYsxpg8qg4l7C/m0HSGLxg0OQ+tt/UBPFlq2Kp/IVfg5RtwrS1Q8wekoVqsSlFqotSohBMTacXgGURp6u2PYGpp8z994FLzqX+Ub7IqrxyIRDx1gI9fyb4j83S+Z7Bd3gamuj3qv9SfwSoLug=
+    secure: RqEkIem6LLaByBO/e2Xh09swx9Fzqjce78kJ/5WUhvg10ohszT5gW9ykcIQnof42RkUsdf2UuUfOcj/ME58ydVpGYdyiXjamOi62ZYKanAznrPkEC0bw+6lNJUa01tKZ25H9L16VMGZvmCOjpnhZP40HLCpYm7hnJiVa0JVnkyU=
   on:
     tags: true
-    distributions: "release"
+    distributions: release
