@@ -69,8 +69,9 @@ if tuple(robot.version.VERSION.split('.')) <= (2,5):
 
 
 class IpmiConnection():
-    def __init__(self, ipmi):
+    def __init__(self, ipmi, target):
         self._ipmi = ipmi
+        self._target = target
         self._properties = {}
         self._sel_records = []
         self._selected_sel_record = None
@@ -124,16 +125,16 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         raise AssertionError('RMCP not ready in %s.'
                 % (robottime.secs_to_timestr(timeout)))
 
-    def open_ipmi_connection(self, host, target_address, user='', password='',
-            routing_information=[(0x20,0)], port=623, interface=None,
-            alias=None):
-        """*DEPRECATED* Please use `Open IPMI LAN Connection`.
-        """
-        return self.open_ipmi_connection(host, target_address, user, password,
-            routing_information, port, alias)
+
+    def open_ipmi_rmcp_connection(self, host, target_address, user='',
+            password='', routing_information=None, port=623, alias=None):
+
+        self.open_ipmi_lan_connection(host, target_address, user, password,
+                routing_information, port, interface_type='rmcp', alias=alias)
 
     def open_ipmi_lan_connection(self, host, target_address, user='', password='',
-            routing_information=[(0x20,0)], port=623, alias=None):
+            routing_information=None, port=623, interface_type='ipmitool',
+            alias=None):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -147,22 +148,20 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         password = str(password)
         port = int_any_base(port)
 
-        if alias:
-            alias = str(alias)
-
-        interface = pyipmi.interfaces.create_interface('ipmitool')
+        interface = pyipmi.interfaces.create_interface(interface_type)
         ipmi = pyipmi.create_connection(interface)
         ipmi.session.set_session_type_rmcp(host, port)
         ipmi.session.set_auth_type_user(user, password)
-        ipmi.target = pyipmi.Target(target_address)
-        ipmi.target.set_routing_information(routing_information)
 
         self._info('Opening IPMI connection to %s:%d/%02Xh' % (host,
             port, target_address))
 
         ipmi.session.establish()
 
-        connection = IpmiConnection(ipmi)
+        target = pyipmi.Target(target_address, routing_information)
+        ipmi.target = target
+
+        connection = IpmiConnection(ipmi, target)
 
         self._active_connection = connection
 
@@ -189,19 +188,17 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             serial = None
             self._info('Opening Aardvark adapter on port %d' % (port,))
 
-        if alias:
-            alias = str(alias)
-
         interface = pyipmi.interfaces.create_interface('aardvark',
                 slave_address=slave_address, port=port, serial_number=serial,
                 enable_i2c_pullups=enable_i2c_pullups)
         ipmi = pyipmi.create_connection(interface)
-        ipmi.target = pyipmi.Target(target_address)
-        ipmi.target.set_routing_information(routing_information)
 
-        self._info('Opening IPMI aardvark connection to %02Xh' % (target_address))
+        target = pyipmi.Target(target_address, routing_information)
+        ipmi.target = target
 
-        connection = IpmiConnection(ipmi)
+        self._info('Opening IPMI aardvark connection to %02Xh' % target_address)
+
+        connection = IpmiConnection(ipmi, target)
 
         self._active_connection = connection
 
@@ -238,7 +235,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
     def close_ipmi_connection(self, loglevel=None):
         """Closes the current connection.
         """
-        self._ipmi.session.close()
+        self._active_connection.close()
+
 
     def wait_until_connection_is_ready(self):
         """*DEPRECATED*"""
@@ -250,10 +248,6 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
                 time.sleep(self._poll_interval)
             else:
                 return
-
-    def set_target_address(self, target_address):
-        target_address = int_any_base(target_address)
-        self._ipmi.target = pyipmi.Target(target_address)
 
     def is_ipmc_accessible(self):
         return self._ipmi.is_ipmc_accessible()
