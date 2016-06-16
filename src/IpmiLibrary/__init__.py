@@ -321,8 +321,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         bytes = [ int_any_base(b) for b in bytes ]
         raw = ''.join([chr(b) for b in bytes[1:]])
         rsp = self._ipmi.raw_command(lun, bytes[0], raw)
-
-        return rsp
+        return [ord(b) for b in rsp]
 
     def send_ipmi_message(self, message, expected_cc=0x00):
         expected_cc = int_any_base(expected_cc)
