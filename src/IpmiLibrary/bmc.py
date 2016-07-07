@@ -80,7 +80,7 @@ class Bmc:
         else:
             print 'c', data
             data = [int_any_base(data)]
-        data = array.array('c', [chr(c) for c in data])
+        data = array.array('B', data)
         rsp = self._ipmi.i2c_write_read(bus_type, bus_id, channel, address,
                 count, data)
         return rsp
