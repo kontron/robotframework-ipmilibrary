@@ -79,7 +79,7 @@ class Fru:
             data = data
         else:
             data = [int_any_base(data)]
-        data = array.array('c', [chr(c) for c in data])
+        data = array.array('B', data)
         self._ipmi.write_fru_data(data, offset, fru_id)
 
     def fru_data_at_offset_should_be(self, offset, expected_data, fru_id=0,
