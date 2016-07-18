@@ -8,7 +8,7 @@ import subprocess
 sys.path.insert(0, 'src')
 
 name = 'robotframework-ipmilibrary'
-version_py = os.path.join(os.path.dirname(__file__), 'src', 'SnmpLibrary',
+version_py = os.path.join(os.path.dirname(__file__), 'src', 'IpmiLibrary',
         'version.py')
 try:
     version = subprocess.Popen(
