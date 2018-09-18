@@ -28,7 +28,7 @@ import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
 import pyipmi.msgs
-from pyipmi.errors import TimeoutError
+from pyipmi.errors import IpmiTimeoutError
 
 from utils import int_any_base
 from mapping import *
