@@ -168,7 +168,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         return self._cache.register(connection, alias)
 
     def open_ipmi_aardvark_connection(self, port_or_serial, target_address,
-        slave_address=0x20,  routing_information=[(0x20, 0)], alias=None,
+        slave_address=0x20,  routing_information=None, alias=None,
         enable_i2c_pullups=True):
         """Opens an Aardvark connection to the IPMB.
         `target_address` is the IPMB address to which the command should be
