@@ -41,7 +41,7 @@ def find_sdr_sensor_type(sensor_type):
     return find_attribute(pyipmi.sensor, sensor_type, 'SENSOR_TYPE_')
 
 def find_entity_type_id(entity_id):
-    return find_attribute(pyipmi.constants, entity_id, 'ENTITY_TYPE_')
+    return find_attribute(pyipmi.constants, entity_id, 'ENTITY_ID_')
 
 def find_picmg_multirecord_id(record_id):
     return find_attribute(pyipmi.fru.FruPicmgRecord, record_id, 'PICMG_RECORD_ID_')
@@ -93,3 +93,15 @@ def find_hpm_component_property(property):
 
 def find_hpm_upgrade_action(action):
     return find_attribute(pyipmi.hpm, action, 'ACTION_')
+
+
+import unittest
+
+class TestFind(unittest.TestCase):
+    def test_find_sdr_record_type(self):
+        val = find_sdr_record_type('FULL Sensor Record')
+        self.assertEqual(val, 0x1)
+
+    def test_find_entity_type_id(self):
+        val = find_entity_type_id('PICMG Front Board')
+        self.assertEqual(val, 0xa0)
