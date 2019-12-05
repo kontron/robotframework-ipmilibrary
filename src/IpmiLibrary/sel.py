@@ -337,9 +337,9 @@ class Sel:
 
         # apply mask
         expected_value = expected_value & mask
-        actual_value = (ord(record.event_data[0]) << 16
-                | ord(record.event_data[1]) << 8
-                | ord(record.event_data[2]))
+        actual_value = (record.event_data[0] << 16
+                       | record.event_data[1] << 8
+                       | record.event_data[2])
         actual_value = actual_value & mask
         expected_value = '0x%x' % expected_value
         actual_value = '0x%x' % actual_value
