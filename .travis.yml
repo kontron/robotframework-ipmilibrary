@@ -30,6 +30,6 @@ jobs:
         provider: pypi
         user: hthiery
         password:
-          secure: RqEkIem6LLaByBO/e2Xh09swx9Fzqjce78kJ/5WUhvg10ohszT5gW9ykcIQnof42RkUsdf2UuUfOcj/ME58ydVpGYdyiXjamOi62ZYKanAznrPkEC0bw+6lNJUa01tKZ25H9L16VMGZvmCOjpnhZP40HLCpYm7hnJiVa0JVnkyU=
+          secure: pypi-AgEIcHlwaS5vcmcCJDE4NmFkZDVjLTZhNjQtNDJhZC1iNmVkLTQ1MGY4Y2I4ODQ1MgACS3sicGVybWlzc2lvbnMiOiB7InByb2plY3RzIjogWyJyb2JvdGZyYW1ld29yay1pcG1pbGlicmFyeSJdfSwgInZlcnNpb24iOiAxfQAABiDm508eYP4UJDxUirKlB5hkavWJtVfS1wyaGD8DiPi2LQ
         on:
           tags: true
