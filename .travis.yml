@@ -19,11 +19,18 @@ after_script:
 - git config --global user.name "Travis CI"
 - git commit -m "autogen libdoc ($(date -R))"
 - git push github gh-pages 2>&1 | grep -v http
-deploy:
-  provider: pypi
-  user: hthiery
-  password:
-    secure: RqEkIem6LLaByBO/e2Xh09swx9Fzqjce78kJ/5WUhvg10ohszT5gW9ykcIQnof42RkUsdf2UuUfOcj/ME58ydVpGYdyiXjamOi62ZYKanAznrPkEC0bw+6lNJUa01tKZ25H9L16VMGZvmCOjpnhZP40HLCpYm7hnJiVa0JVnkyU=
-  on:
-    tags: true
-    distributions: release
+
+jobs:
+  include:
+    - stage: PyPi deploy
+      script: true
+      python: 3.6
+
+      deploy:
+        provider: pypi
+        user: hthiery
+        password:
+          secure: RqEkIem6LLaByBO/e2Xh09swx9Fzqjce78kJ/5WUhvg10ohszT5gW9ykcIQnof42RkUsdf2UuUfOcj/ME58ydVpGYdyiXjamOi62ZYKanAznrPkEC0bw+6lNJUa01tKZ25H9L16VMGZvmCOjpnhZP40HLCpYm7hnJiVa0JVnkyU=
+        on:
+          tags: true
+          distributions: "release"
