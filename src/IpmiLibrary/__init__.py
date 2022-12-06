@@ -30,17 +30,17 @@ import pyipmi.interfaces
 import pyipmi.msgs
 from pyipmi.errors import IpmiTimeoutError
 
-from utils import int_any_base
-from mapping import *
+from .utils import int_any_base
+from .mapping import *
 
-from sdr import Sdr
-from sel import Sel
-from fru import Fru
-from bmc import Bmc
-from picmg import Picmg
-from hpm import Hpm
-from chassis import Chassis
-from lan import Lan
+from .sdr import Sdr
+from .sel import Sel
+from .fru import Fru
+from .bmc import Bmc
+from .picmg import Picmg
+from .hpm import Hpm
+from .chassis import Chassis
+from .lan import Lan
 
 class RobotLogHandler(logging.Handler):
     # mappping from logging to robots log levels
@@ -62,10 +62,10 @@ class RobotLogHandler(logging.Handler):
         LOGGER.log_message(Message(msg, lvl))
 
 
-if tuple(robot.version.VERSION.split('.')) <= (2,5):
-    # add log handler to pyipmi
-    pyipmi.logger.add_log_handler(RobotLogHandler())
-    pyipmi.logger.set_log_level(logging.DEBUG)
+#if tuple(robot.version.VERSION.split('.')) <= (2,5):
+#    # add log handler to pyipmi
+#    pyipmi.logger.add_log_handler(RobotLogHandler())
+#    pyipmi.logger.set_log_level(logging.DEBUG)
 
 
 class IpmiConnection():
@@ -178,7 +178,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         target_address = int_any_base(target_address)
         slave_address = int_any_base(slave_address)
 
-        if isinstance(port_or_serial, basestring) and '-' in port_or_serial:
+        if isinstance(port_or_serial, str) and '-' in port_or_serial:
             serial = port_or_serial
             port = None
             self._info('Opening Aardvark adapter with serial %s' %
@@ -353,12 +353,12 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         if level is None:
             level = self._default_log_level
         if msg != '':
-            print '*%s* %s' % (level.upper(), msg)
+            print('*%s* %s' % (level.upper(), msg))
 
     def _is_valid_log_level(self, level, raise_if_invalid=False):
         if level is None:
             return True
-        if isinstance(level, basestring) and \
+        if isinstance(level, str) and \
                 level.upper() in ['TRACE', 'DEBUG', 'INFO', 'WARN', 'HTML']:
             return True
         if not raise_if_invalid:

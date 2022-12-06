@@ -18,8 +18,8 @@ import time
 from robot import utils
 from robot.utils import asserts
 
-from utils import int_any_base
-from mapping import *
+from .utils import int_any_base
+from .mapping import *
 
 
 class NotSupportedError(Exception):
@@ -73,9 +73,9 @@ class Sel:
     def log_sel(self):
         """Dumps the sensor event log and logs it."""
 
-        print '*INFO* SEL'
+        print('*INFO* SEL')
         for record in self._sel_records:
-            print record
+            print(record)
 
     def _find_sel_records_by_sensor_type(self, type):
         matches = []

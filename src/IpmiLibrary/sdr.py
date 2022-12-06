@@ -21,8 +21,8 @@ from robot.utils.connectioncache import ConnectionCache
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
 
-from utils import int_any_base
-from mapping import *
+from .utils import int_any_base
+from .mapping import *
 
 
 class Sdr:
@@ -130,9 +130,9 @@ class Sdr:
         self._info('Prefetching SDR list')
 
     def log_sdr_list(self):
-        print '*INFO* SDR list'
+        print('*INFO* SDR list')
         for sdr in self._sdr_list:
-            print sdr
+            print(sdr)
 
     def _find_sdr_by_name(self, name):
         for sdr in self._sdr_list:

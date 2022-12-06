@@ -17,9 +17,9 @@ import array
 from robot.utils import asserts
 import pyipmi
 
-import utils
-from utils import int_any_base
-from mapping import *
+#import utils
+from .utils import int_any_base
+from .mapping import *
 
 class Lan:
 

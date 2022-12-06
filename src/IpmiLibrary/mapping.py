@@ -22,7 +22,7 @@ import pyipmi.constants
 import pyipmi.hpm
 import pyipmi.lan
 
-from utils import find_attribute
+from .utils import find_attribute
 
 # new
 def find_fru_field_type_code(type_code):

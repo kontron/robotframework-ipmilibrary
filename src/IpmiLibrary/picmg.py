@@ -18,8 +18,8 @@ from robot.utils.connectioncache import ConnectionCache
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
 
-from utils import int_any_base
-from mapping import *
+from .utils import int_any_base
+from .mapping import *
 
 class Picmg:
     def get_picmg_properties(self):

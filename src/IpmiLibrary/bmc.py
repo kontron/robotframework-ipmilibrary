@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import array
-from mapping import *
+
 from robot import utils
 from robot.utils import asserts
-from utils import int_any_base
+
+from .mapping import *
+from .utils import int_any_base
 
 class Bmc:
     def issue_bmc_cold_reset(self):
@@ -72,13 +74,13 @@ class Bmc:
         address = int_any_base(address)
         count = int_any_base(count)
         if isinstance(data, basestring):
-            print 'a', data
+            print('a', data)
             data = [int_any_base(d) for d in data.split(' ')]
         elif isinstance(data, tuple) or isinstance(data, list):
-            print 'b', data
+            print('b', data)
             data = [int_any_base(d) for d in data]
         else:
-            print 'c', data
+            print('c', data)
             data = [int_any_base(data)]
         data = array.array('B', data)
         rsp = self._ipmi.i2c_write_read(bus_type, bus_id, channel, address,

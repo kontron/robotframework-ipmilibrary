@@ -17,8 +17,8 @@ import array
 from robot.utils import asserts
 import pyipmi
 
-from utils import int_any_base
-from mapping import *
+from .utils import int_any_base
+from .mapping import *
 
 class Fru:
     def _fru_data(self, fru_id):

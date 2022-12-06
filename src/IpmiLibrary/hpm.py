@@ -15,8 +15,9 @@
 from robot.utils import asserts
 from robot import utils
 from pyipmi.errors import DataNotFound, CompletionCodeError
-from utils import int_any_base
-from mapping import *
+
+from .utils import int_any_base
+from .mapping import *
 
 
 class Hpm:
@@ -138,7 +139,7 @@ class Hpm:
 
         try:
             self._ipmi.initiate_upgrade_action(1 << id, action)
-        except CompletionCodeError, e:
+        except CompletionCodeError as e:
             if e.cc == expected_cc:
                 pass
             else:
@@ -157,7 +158,7 @@ class Hpm:
 
         try:
             self._ipmi.finish_firmware_upload(id, size)
-        except CompletionCodeError, e:
+        except CompletionCodeError as e:
             if e.cc == expected_cc:
                 pass
             else:
