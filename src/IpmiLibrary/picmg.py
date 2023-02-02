@@ -363,7 +363,7 @@ class Picmg:
     def _get_hotswap_state(self, sdr):
         state = self.get_sensor_state(None, sdr)&0xff
 
-        if state & state-1 is not 0:
+        if state & state-1 != 0:
             raise AssertionError('sensor reports invalid state 0x%02x'
                     % (state))
 
