@@ -293,7 +293,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         self._poll_interval = robottime.timestr_to_secs(poll_interval)
         return robottime.secs_to_timestr(old)
 
-    def send_raw_command(self, *bytes):
+    def send_raw_command(self, *data):
         """Sends a raw IPMI command.
 
         `bytes` can either be a list or serveral scalar values.
@@ -307,21 +307,23 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         | Send Raw Command | lun=3 | 0x3e | 0x62 | ... | # LUN other than zero
         """
 
-        if isinstance(bytes[0], list):
-            bytes = bytes[0]
+        if isinstance(data[0], list):
+            data = data[0]
 
         lun = 0
-        if len(bytes) > 0 and bytes[0].startswith('lun='):
-            lun = int_any_base(bytes[0][4:])
-            bytes = bytes[1:]
+        if len(data) > 0 and data[0].startswith('lun='):
+            lun = int_any_base(data[0][4:])
+            data = data[1:]
 
-        if len(bytes) < 2:
+        if len(data) < 2:
             raise RuntimeError('netfn and/or cmdid missing')
 
-        bytes = [ int_any_base(b) for b in bytes ]
-        raw = ''.join([chr(b) for b in bytes[1:]])
-        rsp = self._ipmi.raw_command(lun, bytes[0], raw)
-        return [ord(b) for b in rsp]
+        data = [int_any_base(b) for b in data]
+        raw = bytes(data[1:])
+        rsp = self._ipmi.raw_command(lun, netfn=data[0], raw_bytes=raw)
+
+        # rsp is a byte string .. convert to list
+        return list(rsp)
 
     def send_ipmi_message(self, message, expected_cc=0x00):
         expected_cc = int_any_base(expected_cc)
