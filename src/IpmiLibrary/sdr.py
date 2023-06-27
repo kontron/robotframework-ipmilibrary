@@ -384,7 +384,7 @@ class Sdr:
 
         converted_thresholds = {}
         for t in ('lnr', 'lcr', 'lnc', 'unc', 'ucr', 'unr'):
-            if thresholds.has_key(t):
+            if t in thresholds:
                 converted_thresholds[t] \
                     = sdr.convert_sensor_raw_to_value(thresholds[t])
         return converted_thresholds[threshold]
