@@ -81,6 +81,10 @@ def find_event_direction(direction):
 def find_sensor_type(sensor_type):
     return find_attribute(pyipmi.sensor, sensor_type, 'SENSOR_TYPE_')
 
+def find_event_type(event_type):
+    return find_attribute(pyipmi.sensor, event_type,
+            'EVENT_READING_TYPE_CODE_')
+
 def find_lan_configuration_parameter(parameter):
     return find_attribute(pyipmi.lan, parameter, 'LAN_PARAMETER_')
 

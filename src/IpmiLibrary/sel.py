@@ -84,6 +84,15 @@ class Sel:
                 matches.append(record)
         return matches
 
+    def _find_sel_records_by_sensor_type_event_type(self, sensor_type,
+                                                    event_type):
+        matches = []
+        for record in self._sel_records:
+            if (record.sensor_type == sensor_type and
+                record.event_type == event_type):
+                matches.append(record)
+        return matches;
+
     def _find_sel_records_by_sensor_number(self, number):
         matches = []
         for record in self._sel_records:
@@ -150,6 +159,37 @@ class Sel:
                 % (type_name, type, utils.secs_to_timestr(self._timeout)))
 
 
+    def wait_until_sel_contains_x_times_sensor_type_and_event_type(self, count,
+                                                                   sensor_type,
+                                                                   event_type):
+        """Waits until the specified sensor type / event type combination
+        appears at least `count` times within the SEL.
+
+        Note: this keyword invalidates the prefetched SEL records. You have to
+        rerun the `Prefetch SEL` keyword.
+        """
+
+        sensor_type, sensor_type_name = find_sensor_type(sensor_type), sensor_type
+        event_type, event_type_name = find_event_type(event_type), event_type
+
+        count = int(count)
+
+        self._invalidate_prefetched_sel_records()
+        start_time = time.time()
+        while time.time() < start_time + self._timeout:
+            records = self._find_sel_records_by_sensor_type_event_type(sensor_type,
+                                                                       event_type)
+            if len(records) >= count:
+                self._selected_sel_record = records[0]
+                return
+            time.sleep(self._poll_interval)
+
+        raise AssertionError('No match found for SEL record sensor type '
+                             '"%s (%s)" event type "%s (%s)" in %s.'
+                % (sensor_type_name, sensor_type, event_type_name, event_type,
+                   utils.secs_to_timestr(self._timeout)))
+
+
     def wait_until_sel_contains_x_times_sensor_number(self, count, number):
         """Waits until the specified sensor number appears at least `count`
         times within the SEL.
@@ -193,6 +233,31 @@ class Sel:
         | Wait Until SEL Contains Sensor Type | Voltage |
         """
         self.wait_until_sel_contains_x_times_sensor_type(1, type)
+
+    def wait_until_sel_contains_sensor_type_and_event_type(self, sensor_type,
+                                                           event_type):
+        """Wait until the SEL contains at least one record with the given
+        sensor type and event type combination.
+
+        `sensor_type` and `event_type` are either human readable strings or
+        the corresponding number.
+
+        The SEL is polled with an interval, which can be set by `Set Poll
+        Interval` or by `library loading`.
+
+        The first matching entry is automatically selected, see `Select SEL
+        Record By Sensor Type`.
+
+        Note: this keyword invalidates the prefetched SEL records. You have to
+        rerun the `Prefetch SEL` keyword.
+
+        Example:
+        | Set Timeout | 5 seconds |
+        | Wait Until SEL Contains Sensor Type And Event Type | 0x12 | 0x03
+        | Wait Until SEL Contains Sensor Type And Event Type | Voltage | Threshold
+        """
+        self.wait_until_sel_contains_x_times_sensor_type_and_event_type(
+            1, sensor_type, event_type)
 
     def select_sel_record_at_offset(self, offset):
         """Selects a SEL record at offset.
