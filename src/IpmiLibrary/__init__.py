@@ -127,14 +127,16 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
 
     def open_ipmi_rmcp_connection(self, host, target_address, user='',
-            password='', routing_information=None, port=623, alias=None):
+            password='', routing_information=None, port=623, alias=None,
+            max_retries=0):
 
         self.open_ipmi_lan_connection(host, target_address, user, password,
-                routing_information, port, interface_type='rmcp', alias=alias)
+                routing_information, port, interface_type='rmcp', alias=alias,
+                max_retries=max_retries)
 
     def open_ipmi_lan_connection(self, host, target_address, user='', password='',
             routing_information=None, port=623, interface_type='ipmitool',
-            alias=None):
+            alias=None, max_retries=0):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -148,7 +150,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         password = str(password)
         port = int_any_base(port)
 
-        interface = pyipmi.interfaces.create_interface(interface_type)
+        interface = pyipmi.interfaces.create_interface(interface_type,
+                                                       max_retries=max_retries)
         ipmi = pyipmi.create_connection(interface)
         ipmi.session.set_session_type_rmcp(host, port)
         ipmi.session.set_auth_type_user(user, password)
