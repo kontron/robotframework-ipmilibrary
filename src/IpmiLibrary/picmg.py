@@ -367,7 +367,7 @@ class Picmg:
             raise AssertionError('sensor reports invalid state 0x%02x'
                     % (state))
 
-        for s in xrange(7, -1, -1):
+        for s in range(7, -1, -1):
             if state & (1<<s):
                 return s
 
