@@ -73,7 +73,7 @@ class Bmc:
         channel = int_any_base(channel)
         address = int_any_base(address)
         count = int_any_base(count)
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             print('a', data)
             data = [int_any_base(d) for d in data.split(' ')]
         elif isinstance(data, tuple) or isinstance(data, list):
