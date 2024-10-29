@@ -136,8 +136,9 @@ class Sdr:
 
     def _find_sdr_by_name(self, name):
         for sdr in self._sdr_list:
-            if sdr.device_id_string == name:
-                return sdr
+            if hasattr(sdr, 'device_id_string'):
+                if sdr.device_id_string == name:
+                    return sdr
 
         raise AssertionError('SDR with name "%s" not found in list' % (name))
 
