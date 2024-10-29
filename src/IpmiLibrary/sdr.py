@@ -94,7 +94,7 @@ class Sdr:
         offset = int_any_base(offset)
         progress = int_any_base(progress)
 
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             data = [int_any_base(d) for d in data.split(' ')]
         elif isinstance(data, list):
             data = data
