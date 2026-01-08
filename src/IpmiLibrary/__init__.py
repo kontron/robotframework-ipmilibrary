@@ -81,7 +81,7 @@ class IpmiConnection():
         self._properties['sdr_source'] = 'sensor device'
 
     def close(self):
-        self._ipmi.session.close()
+        self._ipmi.close()
 
 
 class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
@@ -152,17 +152,18 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
         interface = pyipmi.interfaces.create_interface(interface_type,
                                                        max_retries=max_retries)
-        ipmi = pyipmi.create_connection(interface)
-        ipmi.session.set_session_type_rmcp(host, port)
-        ipmi.session.set_auth_type_user(user, password)
+        session = pyipmi.Session()
+        session.set_session_type_rmcp(host, port)
+        session.set_auth_type_user(user, password)
+
+        target = pyipmi.Target(target_address, routing_information)
 
         self._info('Opening IPMI connection to %s:%d/%02Xh' % (host,
             port, target_address))
 
-        ipmi.session.establish()
+        ipmi = pyipmi.Ipmi(interface=interface, session=session, target=target)
 
-        target = pyipmi.Target(target_address, routing_information)
-        ipmi.target = target
+        ipmi.open()
 
         connection = IpmiConnection(ipmi, target)
 
@@ -194,12 +195,12 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         interface = pyipmi.interfaces.create_interface('aardvark',
                 slave_address=slave_address, port=port, serial_number=serial,
                 enable_i2c_pullups=enable_i2c_pullups)
-        ipmi = pyipmi.create_connection(interface)
-
         target = pyipmi.Target(target_address, routing_information)
-        ipmi.target = target
 
         self._info('Opening IPMI aardvark connection to %02Xh' % target_address)
+
+        ipmi = pyipmi.Ipmi(interface=interface, target=target)
+        ipmi.open()
 
         connection = IpmiConnection(ipmi, target)
 
