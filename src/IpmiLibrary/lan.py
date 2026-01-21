@@ -78,7 +78,7 @@ class Lan:
 
         channel = int_any_base(channel)
         parameter = find_lan_configuration_parameter(parameter)
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             data = [int_any_base(d) for d in data.split(' ')]
 
         data = array.array('c', [chr(c) for c in data])
