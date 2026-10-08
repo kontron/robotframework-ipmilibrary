@@ -21,22 +21,6 @@ from .mapping import *
 
 
 class Hpm:
-    def hpm_start_firmware_upload(self, file_path, filename):
-        """*DEPRECATED*"""
-        cmd = 'hpm upgrade %s/%s all' % (file_path, filename)
-        self._run_ipmitool_checked(cmd)
-
-    def hpm_start_firmware_upload_and_activate(self, file_path, filename):
-        """*DEPRECATED*"""
-        cmd = 'hpm upgrade %s/%s activate all' % (file_path, filename)
-        self._run_ipmitool_checked(cmd)
-
-    def hpm_start_firmware_rollback(self):
-        """*DEPRECATED*"""
-        cmd = 'hpm rollback'
-        self._run_ipmitool_checked(cmd)
-
-
     def hpm_install_component_from_file(self, filename, component_name):
         """ Install the specified component
         """
@@ -54,7 +38,7 @@ class Hpm:
     def hpm_image_header_value_should_be(self, filename, field, expected_value):
         """
         """
-        image = self._ipmi.load_upgrade_image(filename)
+        image = self._ipmi.open_upgrade_image(filename)
 
         value = getattr(image.header, field)
         asserts.assert_equal(expected_value, value)

@@ -94,13 +94,13 @@ class Sdr:
         offset = int_any_base(offset)
         progress = int_any_base(progress)
 
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             data = [int_any_base(d) for d in data.split(' ')]
         elif isinstance(data, list):
-            data = data
+            data = [int_any_base(d) for d in data]
         else:
             data = [int_any_base(data)]
-        data = array.array('c', [chr(c) for c in data])
+        data = array.array('B', data)
 
         return self._ipmi.partial_add_sdr(
                 reservation_id, record_id, offset, progress, data)

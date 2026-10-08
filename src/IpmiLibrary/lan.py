@@ -59,7 +59,8 @@ class Lan:
 
         channel = int_any_base(channel)
         parameter = find_lan_configuration_parameter(parameter)
-        data = self._ipmi.get_lan_configuration_parameters(channel, parameter_selector=parameter)
+        data = self._ipmi.get_lan_config_param(channel,
+                parameter_selector=parameter)
         return [c for c in data]
 
     def set_lan_configuration_parameter(self, channel, parameter, data):
@@ -78,15 +79,11 @@ class Lan:
 
         channel = int_any_base(channel)
         parameter = find_lan_configuration_parameter(parameter)
-        if isinstance(data, basestring):
-            data = [int_any_base(d) for d in data.split(' ')]
+        if isinstance(data, str):
+            data = data.split(' ')
+        data = array.array('B', [int_any_base(d) for d in data])
 
-        data = array.array('c', [chr(c) for c in data])
-        req = self.create_message_request('SetLanConfigurationParameters')
-        req.command.channel_number = channel
-        req.parameter_selector = parameter
-        req.data = data
-        rsp = self.send_ipmi_message(req)
+        self._ipmi.set_lan_config_param(channel, parameter, data)
 
     def get_lan_interface_ip_address_source(self, channel):
         """Get LAN Interface IP address source parameter for the channel.

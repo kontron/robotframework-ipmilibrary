@@ -72,7 +72,7 @@ def main():
                 'Programming Language :: Python',
                 'Topic :: Software Development :: Testing',
             ],
-            install_requires = [ 'robotframework', 'python-ipmi' ]
+            install_requires = [ 'robotframework', 'python-ipmi>=0.6.1' ]
     )
 
 

@@ -73,7 +73,7 @@ class Fru:
 
         fru_id = int(fru_id)
         offset = int_any_base(offset)
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             data = [int_any_base(d) for d in data.split(' ')]
         elif isinstance(data, list):
             data = data
