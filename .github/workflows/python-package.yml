@@ -17,6 +17,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          # the tags are needed for the version
+          fetch-depth: 0
       - name: Set up Python $${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:

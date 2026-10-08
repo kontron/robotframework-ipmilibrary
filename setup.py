@@ -18,7 +18,10 @@ def pep440_version(describe):
 
     e.g. '0.3.7-2-ga670b1e-dirty' -> '0.3.7.post2+ga670b1e.dirty'
     """
-    m = re.match(r'^(?P<tag>[0-9][^-]*)(-(?P<n>\d+)-(?P<sha>g[0-9a-f]+))?'
+    # a tag is a dotted version, otherwise the abbreviated commit could be
+    # taken for one if it starts with a digit
+    m = re.match(r'^(?P<tag>\d+(\.\d+)+[^-]*)'
+                 r'(-(?P<n>\d+)-(?P<sha>g[0-9a-f]+))?'
                  r'(?P<dirty>-dirty)?$', describe)
     if m is None:
         # no tag, only the abbreviated commit
