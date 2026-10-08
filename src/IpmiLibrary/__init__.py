@@ -135,15 +135,15 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
     def open_ipmi_rmcp_connection(self, host, target_address, user='',
             password='', routing_information=None, port=623, alias=None,
-            max_retries=0):
+            max_retries=None):
 
-        self.open_ipmi_lan_connection(host, target_address, user, password,
-                routing_information, port, interface_type='rmcp', alias=alias,
+        return self.open_ipmi_lan_connection(host, target_address, user,
+                password, routing_information, port, interface_type='rmcp', alias=alias,
                 max_retries=max_retries)
 
     def open_ipmi_lan_connection(self, host, target_address, user='', password='',
-            routing_information=None, port=623, interface_type='ipmitool',
-            alias=None, max_retries=0):
+            routing_information=None, port=623, interface_type='rmcp',
+            alias=None, max_retries=None):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -157,8 +157,15 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         password = str(password)
         port = int_any_base(port)
 
+        kwargs = {}
+        if max_retries is not None:
+            # the ipmitool interface calls it `retries`
+            if interface_type == 'ipmitool':
+                kwargs['retries'] = int_any_base(max_retries)
+            else:
+                kwargs['max_retries'] = int_any_base(max_retries)
         interface = pyipmi.interfaces.create_interface(interface_type,
-                                                       max_retries=max_retries)
+                                                       **kwargs)
         session = pyipmi.Session()
         session.set_session_type_rmcp(host, port)
         session.set_auth_type_user(user, password)
