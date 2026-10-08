@@ -33,6 +33,11 @@ from pyipmi.errors import IpmiTimeoutError
 from .utils import int_any_base
 from .mapping import *
 
+try:
+    from .version import __version__
+except ImportError:
+    __version__ = 'unknown'
+
 from .sdr import Sdr
 from .sel import Sel
 from .fru import Fru
@@ -93,7 +98,7 @@ class IpmiConnection():
 
 class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
-    ROBOT_LIBRARY_VERSION = '0.0.1'
+    ROBOT_LIBRARY_VERSION = __version__
     ROBOT_LIBRARY_SCOPE = 'TEST SUITE'
 
     def __init__(self, timeout=3.0, poll_interval=1.0):
@@ -119,6 +124,11 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         """
 
         timeout = robottime.timestr_to_secs(timeout)
+
+        if not hasattr(self._ipmi.interface, 'rmcp_ping'):
+            self._warn('The %s interface does not support RMCP ping, not '
+                    'waiting' % self._ipmi.interface.NAME)
+            return
 
         start_time = time.time()
         while time.time() < start_time + timeout:
@@ -321,7 +331,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             data = data[0]
 
         lun = 0
-        if len(data) > 0 and data[0].startswith('lun='):
+        if len(data) > 0 and str(data[0]).startswith('lun='):
             lun = int_any_base(data[0][4:])
             data = data[1:]
 

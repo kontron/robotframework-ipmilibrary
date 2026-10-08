@@ -17,8 +17,8 @@ import array
 from robot.utils import asserts
 import pyipmi
 
-#import utils
-from .utils import int_any_base
+from .utils import (int_any_base, ip_address_to_string, parse_ip_address,
+        mac_address_to_string, parse_mac_address)
 from .mapping import *
 
 class Lan:
@@ -119,7 +119,7 @@ class Lan:
 
         ip = self.get_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_IP_ADDRESS)
-        return misc.ip_address_to_string(ip)
+        return ip_address_to_string(ip)
 
     def set_lan_interface_ip_address(self, channel, ip_address):
         """Set IP address for the channel.
@@ -128,7 +128,7 @@ class Lan:
         """
 
         channel = int_any_base(channel)
-        ip_address = misc.parse_ip_address(ip_address)
+        ip_address = parse_ip_address(ip_address)
         self.set_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_IP_ADDRESS, ip_address)
 
@@ -141,7 +141,7 @@ class Lan:
         channel = int_any_base(channel)
         mac = self.get_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_MAC_ADDRESS)
-        return misc.mac_address_to_string(mac)
+        return mac_address_to_string(mac)
 
     def set_lan_interface_mac_address(self, channel, mac_address):
         """Set MAC address for the channel.
@@ -151,7 +151,7 @@ class Lan:
         """
 
         channel = int_any_base(channel)
-        mac_address = misc.parse_mac_address(mac_address)
+        mac_address = parse_mac_address(mac_address)
         self.set_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_MAC_ADDRESS, mac_address)
 
@@ -163,7 +163,7 @@ class Lan:
 
         ip = self.get_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_DEFAULT_GATEWAY_ADDRESS)
-        return misc.ip_address_to_string(ip)
+        return ip_address_to_string(ip)
 
     def set_lan_interface_gateway_ip_address(self, channel, ip_address):
         """Set the IP address of the interface channel.
@@ -172,7 +172,7 @@ class Lan:
         """
 
         channel = int_any_base(channel)
-        ip_address = misc.parse_ip_address(ip_address)
+        ip_address = parse_ip_address(ip_address)
         self.set_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_DEFAULT_GATEWAY_ADDRESS, ip_address)
 
@@ -184,7 +184,7 @@ class Lan:
 
         mac = self.get_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_DEFAULT_GATEWAY_MAC_ADDRESS)
-        return misc.mac_address_to_string(mac, inverted=False)
+        return mac_address_to_string(mac, inverted=False)
 
     def set_lan_interface_gateway_mac_address(self, channel, mac_address):
         """Set the MAC address of the interface channel's gateway.
@@ -193,8 +193,7 @@ class Lan:
         """
 
         channel = int_any_base(channel)
-        mac_address = misc.parse_mac_address(mac_address)
-        mac_address = [b for b in reversed(mac_address)]
+        mac_address = parse_mac_address(mac_address)
         self.set_lan_configuration_parameter(channel,
                 pyipmi.lan.LAN_PARAMETER_DEFAULT_GATEWAY_MAC_ADDRESS,
                         mac_address)

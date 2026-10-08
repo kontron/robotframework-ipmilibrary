@@ -59,9 +59,8 @@ class Fru:
         fru_id = int(fru_id)
         offset = int_any_base(offset)
         count = int_any_base(count)
-        data_string = self._ipmi.read_fru_data(offset, count, fru_id)
-        data = [ord(c) for c in data_string]
-        return data
+        data = self._ipmi.read_fru_data(offset, count, fru_id)
+        return list(data)
 
     def write_fru_data(self, offset, data, fru_id=0):
         """Writes data bytes to FRU data area.
@@ -114,7 +113,7 @@ class Fru:
             # binary
             expected_data = [int_any_base(d) for d in expected_data.split(' ')]
         else:
-            expected_data = str(expected_data)
+            expected_data = str(expected_data).encode('latin-1')
         expected_data = array.array('B', expected_data)
 
         tlv = array.array('B',

@@ -65,4 +65,4 @@ def parse_mac_address(mac_address):
     """Converts a MAC address string.
     Returns a list containing the mac address bytes.
     """
-    return [int(v,16) for v in reversed(mac_address.split(':', 5))]
+    return [int(v, 16) for v in mac_address.split(':', 5)]
