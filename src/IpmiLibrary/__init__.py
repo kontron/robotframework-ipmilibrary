@@ -103,6 +103,8 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._cache = ConnectionCache()
+        # fails with "No open connection" until a connection is opened
+        self._active_connection = self._cache.current
         self._timeout = timeout
         self._poll_interval = poll_interval
 
@@ -327,7 +329,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         | Send Raw Command | lun=3 | 0x3e | 0x62 | ... | # LUN other than zero
         """
 
-        if isinstance(data[0], list):
+        if len(data) > 0 and isinstance(data[0], list):
             data = data[0]
 
         lun = 0

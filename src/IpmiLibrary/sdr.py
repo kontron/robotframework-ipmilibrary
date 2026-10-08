@@ -25,6 +25,18 @@ from .utils import int_any_base
 from .mapping import *
 
 
+# the converted readings are floats, e.g. 0.7020000000000001 for 0.702
+DEFAULT_READING_TOLERANCE = 1e-6
+
+
+def _readings_equal(expected, actual, tolerance=None):
+    if actual is None:
+        return False
+    if tolerance is None:
+        tolerance = DEFAULT_READING_TOLERANCE
+    return abs(expected - actual) <= float(tolerance)
+
+
 class Sdr:
 
     def set_sdr_source(self, source):
@@ -214,17 +226,18 @@ class Sdr:
                 expected_state, self._selected_sdr, mask, msg)
 
     def selected_sdr_sensor_reading_should_be_equal(self, expected_reading,
-                msg=None):
+                msg=None, tolerance=None):
         """Fails unless the reading of the selected sensor matches the given
         one.
 
         Note: `expected_reading` is the converted value, not the raw reading.
+        See `Sensor Reading Should Be Equal` for `tolerance`.
         """
 
         sdr = self._selected_sdr
         self.sensor_reading_should_be_equal(
                 getattr(sdr, 'device_id_string', None), expected_reading,
-                msg, sdr)
+                msg, sdr, tolerance)
 
     def selected_sdr_entity_id_should_be(self, expected_entity_id, msg=None):
         """Fails unless the entity ID of the selected SDR matches the given
@@ -295,9 +308,12 @@ class Sdr:
         asserts.assert_equal(expected_state, actual_state, msg)
 
     def sensor_reading_should_be_equal(self, name, expected_reading, msg=None,
-            sdr=None):
+            sdr=None, tolerance=None):
         """Fails unless the sensor reading of the sensor with name `name`
         matches the given one.
+
+        The reading may differ by `tolerance` from `expected_reading`. If it
+        is not given only rounding errors of the conversion are ignored.
         """
 
         expected_reading = float(expected_reading)
@@ -309,7 +325,9 @@ class Sdr:
             actual_reading = sdr.convert_sensor_raw_to_value(raw)
         else:
             actual_reading = None
-        asserts.assert_equal(expected_reading, actual_reading, msg)
+        if not _readings_equal(expected_reading, actual_reading, tolerance):
+            asserts.fail(msg or '%s != %s' % (expected_reading,
+                    actual_reading))
 
     def sdr_should_be_present(self, name):
         """Fails unless the SDR with the given name is present.
@@ -435,10 +453,11 @@ class Sdr:
         raise AssertionError('Sensor "%s" did not reach the state "%s" in %s.'
                 % (name, state, utils.secs_to_timestr(self._timeout)))
 
-    def wait_until_sensor_reading_is(self, name, value):
+    def wait_until_sensor_reading_is(self, name, value, tolerance=None):
         """Wait until a sensor reaches the given value.
 
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
+        `name` is the sensor ID string. See also `Get Sensor Reading`. See
+        `Sensor Reading Should Be Equal` for `tolerance`.
         """
 
         value = float(value)
@@ -446,7 +465,7 @@ class Sdr:
         start_time = time.time()
         while time.time() < start_time + self._timeout:
             current_reading = self.get_sensor_reading(name)
-            if current_reading == value:
+            if _readings_equal(value, current_reading, tolerance):
                 self._info('waited %s seconds until value "%s" was reached'
                         % (time.time()-start_time, value))
                 return

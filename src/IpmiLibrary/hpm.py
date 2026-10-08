@@ -14,18 +14,26 @@
 
 from robot.utils import asserts
 from robot import utils
-from pyipmi.errors import DataNotFound, CompletionCodeError
+from pyipmi.errors import CompletionCodeError
 
 from .utils import int_any_base
 from .mapping import *
 
 
 class Hpm:
+    def _find_hpm_component_id(self, component_name):
+        component_id = self._ipmi.find_component_id_by_descriptor(
+                component_name)
+        if component_id is None:
+            raise AssertionError('HPM component "%s" not found'
+                    % component_name)
+        return component_id
+
     def hpm_install_component_from_file(self, filename, component_name):
         """ Install the specified component
         """
 
-        id = self._ipmi.find_component_id_by_descriptor(component_name)
+        id = self._find_hpm_component_id(component_name)
         self._ipmi.install_component_from_file(filename, id)
 
 
@@ -68,10 +76,7 @@ class Hpm:
 
         property_id = find_hpm_component_property(property)
 
-        comp_id = self._ipmi.find_component_id_by_descriptor(component_name)
-
-        if comp_id is None:
-            raise DataNotFound('no component with name %s found' % component_name)
+        comp_id = self._find_hpm_component_id(component_name)
 
         property = self._ipmi.get_component_property(comp_id, property_id)
 
@@ -95,10 +100,21 @@ class Hpm:
         """
         return self._ipmi.get_upgrade_status()
 
-    def hpm_activate_firmware(self, override=None):
+    def hpm_activate_firmware(self, override=None, timeout='10 seconds',
+            interval='1 second'):
+        """Activates the uploaded firmware and waits until it is completed.
+
+        `override` is the rollback override policy, it is not sent if not
+        given. `timeout` and `interval` are given in Robot Framework's time
+        format.
         """
-        """
-        return self._ipmi.activate_firmware_and_wait(timeout=10)
+        if override is not None:
+            override = int_any_base(override)
+        timeout = utils.timestr_to_secs(timeout)
+        interval = utils.timestr_to_secs(interval)
+        return self._ipmi.activate_firmware_and_wait(
+                rollback_override=override, timeout=timeout,
+                interval=interval)
 
     def hpm_abort_firmware_upgrade(self):
         """
@@ -117,17 +133,15 @@ class Hpm:
             UPLOAD_FOR_UPGRADE,
             UPLOAD_FOR_COMPARE
         """
-        id = self._ipmi.find_component_id_by_descriptor(component_name)
+        id = self._find_hpm_component_id(component_name)
         action = find_hpm_upgrade_action(action)
         expected_cc = int_any_base(expected_cc)
 
         try:
             self._ipmi.initiate_upgrade_action(1 << id, action)
         except CompletionCodeError as e:
-            if e.cc == expected_cc:
-                pass
-            else:
-                raise CompletionCodeError(e.cc)
+            if e.cc != expected_cc:
+                raise
 
     def hpm_upload_firmware_binary(self, binary):
         self._ipmi.upload_binary(binary)
@@ -135,18 +149,14 @@ class Hpm:
     def hpm_finish_firmware_upload(self, component_name, size,
             expected_cc=pyipmi.msgs.constants.CC_OK):
         size = int_any_base(size)
-        id = self._ipmi.find_component_id_by_descriptor(component_name)
+        id = self._find_hpm_component_id(component_name)
         expected_cc = int_any_base(expected_cc)
-        if id is None:
-            raise AssertionError('component_name=%s not found' % (component_name))
 
         try:
             self._ipmi.finish_firmware_upload(id, size)
         except CompletionCodeError as e:
-            if e.cc == expected_cc:
-                pass
-            else:
-                raise CompletionCodeError(e.cc)
+            if e.cc != expected_cc:
+                raise
 
     def hpm_wait_until_long_duration_command_is_finished(self, cmd,
             timeout, interval):

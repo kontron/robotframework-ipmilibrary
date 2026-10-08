@@ -4,7 +4,7 @@ import unittest
 from unittest import mock
 
 import pyipmi
-from pyipmi.errors import IpmiTimeoutError
+from pyipmi.errors import CompletionCodeError, IpmiTimeoutError
 
 from IpmiLibrary import IpmiLibrary, IpmiConnection
 from IpmiLibrary import mapping
@@ -59,6 +59,11 @@ class LibraryTestCase(unittest.TestCase):
 
 
 class TestConnection(LibraryTestCase):
+    def test_no_open_connection(self):
+        lib = IpmiLibrary()
+        with self.assertRaisesRegex(RuntimeError, 'No open connection'):
+            lib.send_raw_command('0x06', '0x01')
+
     def test_close_twice_closes_once(self):
         self.lib.close_ipmi_connection()
         self.lib.close_ipmi_connection()
@@ -113,6 +118,10 @@ class TestRaw(LibraryTestCase):
         self.ipmi.send_raw.assert_called_once_with(0, netfn=6,
                 raw_bytes=b'\x01')
 
+    def test_send_raw_command_without_arguments(self):
+        with self.assertRaisesRegex(RuntimeError, 'netfn'):
+            self.lib.send_raw_command()
+
     def test_send_raw_command_with_integers(self):
         self.ipmi.send_raw.return_value = b'\x00'
         self.lib.send_raw_command(6, 1)
@@ -156,6 +165,22 @@ class TestSdr(LibraryTestCase):
         self.lib.sensor_reading_should_be_equal('CPU Temp', '37')
         with self.assertRaises(AssertionError):
             self.lib.sensor_reading_should_be_equal('CPU Temp', '38')
+
+    def test_sensor_reading_rounding_error(self):
+        self.sdr.convert_sensor_raw_to_value.return_value = 0.7020000000000001
+        self.lib.sensor_reading_should_be_equal('CPU Temp', '0.702')
+        self.lib.wait_until_sensor_reading_is('CPU Temp', '0.702')
+
+    def test_sensor_reading_tolerance(self):
+        self.lib.sensor_reading_should_be_equal('CPU Temp', '36.5',
+                tolerance='0.5')
+        with self.assertRaisesRegex(AssertionError, '36.0 != 37.0'):
+            self.lib.sensor_reading_should_be_equal('CPU Temp', '36')
+
+    def test_sensor_reading_not_available(self):
+        self.ipmi.get_sensor_reading.return_value = (None, None)
+        with self.assertRaises(AssertionError):
+            self.lib.sensor_reading_should_be_equal('CPU Temp', '37')
 
     def test_selected_sdr_sensor_reading_should_be_equal(self):
         self.lib.select_sdr_by_name('CPU Temp')
@@ -237,6 +262,36 @@ class TestPicmg(LibraryTestCase):
 
 
 class TestHpm(LibraryTestCase):
+    def test_unknown_component(self):
+        self.ipmi.find_component_id_by_descriptor.return_value = None
+        for kw, args in (
+                (self.lib.hpm_install_component_from_file, ('file', 'MMC')),
+                (self.lib.hpm_get_component_property,
+                        ('MMC', 'current version')),
+                (self.lib.hpm_initiate_upgrade_action,
+                        ('MMC', 'BACKUP_COMPONENT')),
+                (self.lib.hpm_finish_firmware_upload, ('MMC', 10))):
+            with self.assertRaisesRegex(AssertionError,
+                    'HPM component "MMC" not found'):
+                kw(*args)
+
+    def test_expected_completion_code(self):
+        self.ipmi.find_component_id_by_descriptor.return_value = 1
+        error = CompletionCodeError(0x80)
+        self.ipmi.finish_firmware_upload.side_effect = error
+        self.lib.hpm_finish_firmware_upload('MMC', 10, expected_cc='0x80')
+        with self.assertRaises(CompletionCodeError) as cm:
+            self.lib.hpm_finish_firmware_upload('MMC', 10)
+        self.assertIs(cm.exception, error)
+
+    def test_activate_firmware(self):
+        self.lib.hpm_activate_firmware()
+        self.ipmi.activate_firmware_and_wait.assert_called_with(
+                rollback_override=None, timeout=10, interval=1)
+        self.lib.hpm_activate_firmware('1', '1 minute', '2s')
+        self.ipmi.activate_firmware_and_wait.assert_called_with(
+                rollback_override=1, timeout=60, interval=2)
+
     def test_image_header_value(self):
         image = mock.Mock()
         image.header.foo = 'x'
