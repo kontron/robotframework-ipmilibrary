@@ -1,2 +1,6 @@
 *.pyc
 *~
+src/IpmiLibrary/version.py
+build/
+dist/
+*.egg-info/

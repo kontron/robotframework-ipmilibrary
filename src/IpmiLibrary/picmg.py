@@ -104,15 +104,17 @@ class Picmg:
         `expecte_state` value can be:
         Local Control, Override, Lamp Test
         """
-        ac = self._active_connection
-        expected_state = find_picmg_led_function(expected_state)
-        if ac._led.override_enabled:
-            pass
-        elif ac._led.override_enabled:
-            function = ac._led.override_function
+        expected_state = expected_state.upper().replace(' ', '_')
+        if expected_state not in ('LOCAL_CONTROL', 'OVERRIDE', 'LAMP_TEST'):
+            raise RuntimeError('Invalid LED state "%s"' % expected_state)
+        led_state = self._cp['led_state']
+        if led_state.lamp_test_enabled:
+            actual_state = 'LAMP_TEST'
+        elif led_state.override_enabled:
+            actual_state = 'OVERRIDE'
         else:
-            function = ac._led.local_function
-        asserts.assert_equal(expected_function, function, msg, values)
+            actual_state = 'LOCAL_CONTROL'
+        asserts.assert_equal(expected_state, actual_state, msg, values)
 
     def set_fru_led_state(self, fruid, ledid, state, color):
         """Set the FRU LED State.
@@ -268,7 +270,7 @@ class Picmg:
 
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
-        signaling_class = find_picmg_signaling_class(signaling_class)
+        signaling_class = find_picmg_link_signaling_class(signaling_class)
         self._ipmi.set_signaling_class(interface, channel, signaling_class)
 
     def get_signaling_class(self, interface, channel):
@@ -277,7 +279,7 @@ class Picmg:
 
         interface = find_picmg_interface_type(interface)
         channel = int(channel)
-        self._ipmi.get_signaling_class(interfac, channel)
+        return self._ipmi.get_signaling_class(interface, channel)
 
     def get_pm_global_status(self):
         """
@@ -357,8 +359,9 @@ class Picmg:
                 if hs_sdr.entity_id == entity_id and \
                         hs_sdr.entity_instance == entity_instance:
                     return hs_sdr
-        else:
-            self._info('HS SDR not found')
+
+        raise AssertionError('Hotswap SDR for entity %s not found, see '
+                '`Prefetch Hotswap SDR`' % entity)
 
     def _get_hotswap_state(self, sdr):
         state = self.get_sensor_state(None, sdr)&0xff

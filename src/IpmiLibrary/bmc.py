@@ -73,16 +73,11 @@ class Bmc:
         channel = int_any_base(channel)
         address = int_any_base(address)
         count = int_any_base(count)
-        if isinstance(data, basestring):
-            print('a', data)
-            data = [int_any_base(d) for d in data.split(' ')]
-        elif isinstance(data, tuple) or isinstance(data, list):
-            print('b', data)
-            data = [int_any_base(d) for d in data]
-        else:
-            print('c', data)
-            data = [int_any_base(data)]
-        data = array.array('B', data)
+        if len(data) == 1 and isinstance(data[0], str):
+            data = data[0].split(' ')
+        elif len(data) == 1 and isinstance(data[0], (list, tuple)):
+            data = data[0]
+        data = array.array('B', [int_any_base(d) for d in data])
         rsp = self._ipmi.i2c_write_read(bus_type, bus_id, channel, address,
                 count, data)
         return rsp
@@ -90,12 +85,12 @@ class Bmc:
     def i2c_write(self, bus_type, bus_id, channel, address, *data):
         """Sends a _Master Write-Read_ command to the given bus.
         """
-        self.i2c_write_read(bus_type, bus_id, channel, address, 0, data)
+        self.i2c_write_read(bus_type, bus_id, channel, address, 0, *data)
 
     def i2c_read(self, bus_type, bus_id, channel, address, count):
         """Sends a _Master Write-Read_ command to the given bus.
         """
-        return self.i2c_write_read(bus_type, bus_id, channel, address, count, None)
+        return self.i2c_write_read(bus_type, bus_id, channel, address, count)
 
     def start_watchdog_timer(self, value, action="Hard Reset",
             timer_use="SMS OS"):

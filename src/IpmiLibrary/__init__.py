@@ -33,6 +33,11 @@ from pyipmi.errors import IpmiTimeoutError
 from .utils import int_any_base
 from .mapping import *
 
+try:
+    from .version import __version__
+except ImportError:
+    __version__ = 'unknown'
+
 from .sdr import Sdr
 from .sel import Sel
 from .fru import Fru
@@ -80,17 +85,26 @@ class IpmiConnection():
         self._sdr_source = 'device'
         self._properties['sdr_source'] = 'sensor device'
 
+        self._closed = False
+
     def close(self):
+        # the connection cache closes all connections again, even the ones
+        # already closed by `Close IPMI Connection`
+        if self._closed:
+            return
+        self._closed = True
         self._ipmi.close()
 
 
 class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
-    ROBOT_LIBRARY_VERSION = '0.0.1'
+    ROBOT_LIBRARY_VERSION = __version__
     ROBOT_LIBRARY_SCOPE = 'TEST SUITE'
 
     def __init__(self, timeout=3.0, poll_interval=1.0):
         self._cache = ConnectionCache()
+        # fails with "No open connection" until a connection is opened
+        self._active_connection = self._cache.current
         self._timeout = timeout
         self._poll_interval = poll_interval
 
@@ -113,12 +127,17 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
         timeout = robottime.timestr_to_secs(timeout)
 
+        if not hasattr(self._ipmi.interface, 'rmcp_ping'):
+            self._warn('The %s interface does not support RMCP ping, not '
+                    'waiting' % self._ipmi.interface.NAME)
+            return
+
         start_time = time.time()
         while time.time() < start_time + timeout:
             try:
                 self._ipmi.session.rmcp_ping()
                 return
-            except TimeoutError:
+            except IpmiTimeoutError:
                 pass
             time.sleep(self._poll_interval)
 
@@ -128,15 +147,15 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
     def open_ipmi_rmcp_connection(self, host, target_address, user='',
             password='', routing_information=None, port=623, alias=None,
-            max_retries=0):
+            max_retries=None):
 
-        self.open_ipmi_lan_connection(host, target_address, user, password,
-                routing_information, port, interface_type='rmcp', alias=alias,
+        return self.open_ipmi_lan_connection(host, target_address, user,
+                password, routing_information, port, interface_type='rmcp', alias=alias,
                 max_retries=max_retries)
 
     def open_ipmi_lan_connection(self, host, target_address, user='', password='',
-            routing_information=None, port=623, interface_type='ipmitool',
-            alias=None, max_retries=0):
+            routing_information=None, port=623, interface_type='rmcp',
+            alias=None, max_retries=None):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
@@ -150,8 +169,15 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         password = str(password)
         port = int_any_base(port)
 
+        kwargs = {}
+        if max_retries is not None:
+            # the ipmitool interface calls it `retries`
+            if interface_type == 'ipmitool':
+                kwargs['retries'] = int_any_base(max_retries)
+            else:
+                kwargs['max_retries'] = int_any_base(max_retries)
         interface = pyipmi.interfaces.create_interface(interface_type,
-                                                       max_retries=max_retries)
+                                                       **kwargs)
         session = pyipmi.Session()
         session.set_session_type_rmcp(host, port)
         session.set_auth_type_user(user, password)
@@ -163,7 +189,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
         ipmi = pyipmi.Ipmi(interface=interface, session=session, target=target)
 
-        ipmi.open()
+        self._open_ipmi(ipmi)
 
         connection = IpmiConnection(ipmi, target)
 
@@ -200,13 +226,25 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         self._info('Opening IPMI aardvark connection to %02Xh' % target_address)
 
         ipmi = pyipmi.Ipmi(interface=interface, target=target)
-        ipmi.open()
+        self._open_ipmi(ipmi)
 
         connection = IpmiConnection(ipmi, target)
 
         self._active_connection = connection
 
         return self._cache.register(connection, alias)
+
+    @staticmethod
+    def _open_ipmi(ipmi):
+        try:
+            ipmi.open()
+        except Exception:
+            # release the interface, e.g. the socket of the rmcp interface
+            try:
+                ipmi.close()
+            except Exception:
+                pass
+            raise
 
     def switch_ipmi_connection(self, index_or_alias):
         """Switches between active connections using an index or alias.
@@ -236,33 +274,13 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         """
         self._active_connection = self._cache.close_all()
 
-    def close_ipmi_connection(self, loglevel=None):
+    def close_ipmi_connection(self):
         """Closes the current connection.
         """
         self._active_connection.close()
 
-
-    def wait_until_connection_is_ready(self):
-        """*DEPRECATED*"""
-        start_time = time.time()
-        while time.time() < start_time + self._timeout:
-            output, rc = self._ipmi.interface._run_ipmitool(
-                    self._ipmi.target, 'bmc info')
-            if rc != 0:
-                time.sleep(self._poll_interval)
-            else:
-                return
-
     def is_ipmc_accessible(self):
-        return self._ipmi.is_ipmc_accessible()
-
-    def _run_ipmitool_checked(self, cmd):
-        """*DEPRECATED*"""
-        output, rc = self._ipmi.interface._run_ipmitool(
-                self._ipmi.target, cmd)
-        if rc != 0:
-            raise AssertionError('return code was %d' % rc)
-        return output
+        return self._ipmi.is_target_accessible()
 
     def set_timeout(self, timeout):
         """Sets the timeout used in `Wait Until X` keywords to the given value.
@@ -311,11 +329,11 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         | Send Raw Command | lun=3 | 0x3e | 0x62 | ... | # LUN other than zero
         """
 
-        if isinstance(data[0], list):
+        if len(data) > 0 and isinstance(data[0], list):
             data = data[0]
 
         lun = 0
-        if len(data) > 0 and data[0].startswith('lun='):
+        if len(data) > 0 and str(data[0]).startswith('lun='):
             lun = int_any_base(data[0][4:])
             data = data[1:]
 
@@ -324,7 +342,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
         data = [int_any_base(b) for b in data]
         raw = bytes(data[1:])
-        rsp = self._ipmi.raw_command(lun, netfn=data[0], raw_bytes=raw)
+        rsp = self._ipmi.send_raw(lun, netfn=data[0], raw_bytes=raw)
 
         # rsp is a byte string .. convert to list
         return list(rsp)

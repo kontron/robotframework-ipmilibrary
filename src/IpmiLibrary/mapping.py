@@ -21,12 +21,13 @@ import pyipmi.event
 import pyipmi.constants
 import pyipmi.hpm
 import pyipmi.lan
+import pyipmi.fields
 
 from .utils import find_attribute
 
 # new
 def find_fru_field_type_code(type_code):
-    return find_attribute(pyipmi.fru.FruDataField, type_code, 'TYPE_')
+    return find_attribute(pyipmi.fields.TypeLengthString, type_code, 'TYPE_')
 
 def find_picmg_led_color(color):
     return find_attribute(pyipmi.picmg.LedState, color, 'COLOR_')

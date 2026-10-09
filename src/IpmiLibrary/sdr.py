@@ -25,6 +25,18 @@ from .utils import int_any_base
 from .mapping import *
 
 
+# the converted readings are floats, e.g. 0.7020000000000001 for 0.702
+DEFAULT_READING_TOLERANCE = 1e-6
+
+
+def _readings_equal(expected, actual, tolerance=None):
+    if actual is None:
+        return False
+    if tolerance is None:
+        tolerance = DEFAULT_READING_TOLERANCE
+    return abs(expected - actual) <= float(tolerance)
+
+
 class Sdr:
 
     def set_sdr_source(self, source):
@@ -94,13 +106,13 @@ class Sdr:
         offset = int_any_base(offset)
         progress = int_any_base(progress)
 
-        if isinstance(data, basestring):
+        if isinstance(data, str):
             data = [int_any_base(d) for d in data.split(' ')]
         elif isinstance(data, list):
-            data = data
+            data = [int_any_base(d) for d in data]
         else:
             data = [int_any_base(data)]
-        data = array.array('c', [chr(c) for c in data])
+        data = array.array('B', data)
 
         return self._ipmi.partial_add_sdr(
                 reservation_id, record_id, offset, progress, data)
@@ -117,9 +129,9 @@ class Sdr:
         try:
             return self._cp['selected_sdr']
         except KeyError:
-            AssertionError('No SDR selected.')
+            raise AssertionError('No SDR selected.')
 
-    _selected_sdr.setter
+    @_selected_sdr.setter
     def _selected_sdr(self, value):
         self._cp['selected_sdr'] = value
 
@@ -154,11 +166,17 @@ class Sdr:
             if sdr.type == record_type:
                 return sdr
 
+        raise AssertionError('SDR with record type "%s" not found'
+                % record_type)
+
     def _find_sdr_by_sensor_type(self, sensor_type):
         for sdr in self._sdr_list:
             if hasattr(sdr, 'sensor_type_code'):
                 if sdr.sensor_type_code == sensor_type:
                     return sdr
+
+        raise AssertionError('SDR with sensor type "%s" not found'
+                % sensor_type)
 
     def select_sdr_by_record_id(self, record_id):
         """Selects a SDR by its record id.
@@ -208,17 +226,18 @@ class Sdr:
                 expected_state, self._selected_sdr, mask, msg)
 
     def selected_sdr_sensor_reading_should_be_equal(self, expected_reading,
-                msg=None):
+                msg=None, tolerance=None):
         """Fails unless the reading of the selected sensor matches the given
         one.
 
         Note: `expected_reading` is the converted value, not the raw reading.
+        See `Sensor Reading Should Be Equal` for `tolerance`.
         """
 
-        expected_reading = float(expected_reading)
-
-        self.sensor_reading_should_be_equal(self._selected_sdr,
-                expected_reading, msg)
+        sdr = self._selected_sdr
+        self.sensor_reading_should_be_equal(
+                getattr(sdr, 'device_id_string', None), expected_reading,
+                msg, sdr, tolerance)
 
     def selected_sdr_entity_id_should_be(self, expected_entity_id, msg=None):
         """Fails unless the entity ID of the selected SDR matches the given
@@ -288,20 +307,27 @@ class Sdr:
 
         asserts.assert_equal(expected_state, actual_state, msg)
 
-    def sensor_reading_should_be_equal(self, name, expected_reading, msg=None):
+    def sensor_reading_should_be_equal(self, name, expected_reading, msg=None,
+            sdr=None, tolerance=None):
         """Fails unless the sensor reading of the sensor with name `name`
         matches the given one.
+
+        The reading may differ by `tolerance` from `expected_reading`. If it
+        is not given only rounding errors of the conversion are ignored.
         """
 
         expected_reading = float(expected_reading)
 
-        sdr = self._find_sdr_by_name(name)
-        (raw, _) = ac._ipmi.get_sensor_reading(sdr.number)
+        if sdr is None:
+            sdr = self._find_sdr_by_name(name)
+        (raw, _) = self._ipmi.get_sensor_reading(sdr.number)
         if raw is not None:
-            actual_reading = sdr.convert_sensor_reading(raw)
+            actual_reading = sdr.convert_sensor_raw_to_value(raw)
         else:
             actual_reading = None
-        asserts.assert_equal(expected_value, actual_reading, msg)
+        if not _readings_equal(expected_reading, actual_reading, tolerance):
+            asserts.fail(msg or '%s != %s' % (expected_reading,
+                    actual_reading))
 
     def sdr_should_be_present(self, name):
         """Fails unless the SDR with the given name is present.
@@ -427,10 +453,11 @@ class Sdr:
         raise AssertionError('Sensor "%s" did not reach the state "%s" in %s.'
                 % (name, state, utils.secs_to_timestr(self._timeout)))
 
-    def wait_until_sensor_reading_is(self, name, value):
+    def wait_until_sensor_reading_is(self, name, value, tolerance=None):
         """Wait until a sensor reaches the given value.
 
-        `name` is the sensor ID string. See also `Get Sensor Reading`.
+        `name` is the sensor ID string. See also `Get Sensor Reading`. See
+        `Sensor Reading Should Be Equal` for `tolerance`.
         """
 
         value = float(value)
@@ -438,7 +465,7 @@ class Sdr:
         start_time = time.time()
         while time.time() < start_time + self._timeout:
             current_reading = self.get_sensor_reading(name)
-            if current_reading == value:
+            if _readings_equal(value, current_reading, tolerance):
                 self._info('waited %s seconds until value "%s" was reached'
                         % (time.time()-start_time, value))
                 return

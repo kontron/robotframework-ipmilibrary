@@ -38,7 +38,7 @@ class Sel:
         try:
             return self._cp['selected_sel_record']
         except KeyError:
-            AssertionError('No SEL record selected.')
+            raise AssertionError('No SEL record selected.')
 
     @_selected_sel_record.setter
     def _selected_sel_record(self, value):
@@ -197,7 +197,7 @@ class Sel:
         Note: this keyword invalidates the prefetched SEL records. You have to
         rerun the `Prefetch SEL` keyword.
         """
-        number = find_sensor_type(number)
+        number = int_any_base(number)
         count = int(count)
 
         self._invalidate_prefetched_sel_records()
@@ -383,6 +383,9 @@ class Sel:
             if record.record_id == record_id:
                 self._selected_sel_record = record
                 return
+
+        raise AssertionError('No SEL record found with record id "%d"'
+                % record_id)
 
     def selected_sel_records_event_data_should_be_equal(self, expected_value,
             mask=0xffffff, msg=None):
