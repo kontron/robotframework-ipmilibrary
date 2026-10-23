@@ -134,6 +134,19 @@ class TestMessage(LibraryTestCase):
         req = self.lib.create_message_request('GetDeviceId')
         self.assertIsInstance(req, pyipmi.msgs.bmc.GetDeviceIdReq)
 
+    def test_create_message_request_with_fields(self):
+        req = self.lib.create_message_request(
+                'ChassisControl', **{'control.option': '0x0f'})
+        self.assertEqual(pyipmi.msgs.encode_message(req), b'\x0f')
+        req = self.lib.create_message_request('GetSensorReading',
+                                              sensor_number=3)
+        self.assertEqual(pyipmi.msgs.encode_message(req), b'\x03')
+
+    def test_create_message_request_with_unknown_field(self):
+        with self.assertRaisesRegex(RuntimeError, 'no field "control.optoin"'):
+            self.lib.create_message_request('ChassisControl',
+                                            **{'control.optoin': 1})
+
     def _response(self, cc):
         rsp = pyipmi.msgs.create_response_by_name('GetSelTime')
         rsp.completion_code = cc

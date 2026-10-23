@@ -370,8 +370,30 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         asserts.assert_equal(expected_cc, cc, msg, values=False)
         return rsp
 
-    def create_message_request(self, name):
-        return pyipmi.msgs.create_request_by_name(name)
+    def create_message_request(self, name, **fields):
+        """Creates the python-ipmi request message `name` and returns it.
+
+        `name` is the message name without the `Req` suffix, e.g.
+        `GetDeviceId`. The given `fields` are set in the request; a member
+        of a bitfield is named with a dot. String values are converted to
+        integers, other values are set as they are.
+
+        Example:
+        | ${req}= | Create Message Request | GetSelEntry | record_id=0x10 |
+        | ${req}= | Create Message Request | ChassisControl | control.option=1 |
+        """
+        message = pyipmi.msgs.create_request_by_name(name)
+        for (field, value) in fields.items():
+            path = field.split('.')
+            obj = message
+            for attr in path[:-1]:
+                obj = getattr(obj, attr)
+            if not hasattr(obj, path[-1]):
+                raise RuntimeError('%s has no field "%s"' % (name, field))
+            if isinstance(value, str):
+                value = int_any_base(value)
+            setattr(obj, path[-1], value)
+        return message
 
     def _warn(self, msg):
         self._log(msg, 'WARN')
