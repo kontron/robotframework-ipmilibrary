@@ -94,6 +94,29 @@ class TestConnection(LibraryTestCase):
 
     @mock.patch('pyipmi.Ipmi')
     @mock.patch('pyipmi.interfaces.create_interface')
+    def test_rmcp_plus_connection(self, create_interface, ipmi):
+        self.lib.open_ipmi_rmcp_plus_connection('host', '0x20', 'ADMIN',
+                                                'secret')
+        create_interface.assert_called_with('rmcpplus')
+        session = ipmi.call_args.kwargs['session']
+        self.assertEqual(session.priv_level,
+                         pyipmi.Session.PRIV_LEVEL_ADMINISTRATOR)
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_rmcp_plus_connection_options(self, create_interface, ipmi):
+        self.lib.open_ipmi_rmcp_plus_connection('host', '0x20',
+                cipher_suite='3', privilege_level='operator')
+        create_interface.assert_called_with('rmcpplus', cipher_suite=3)
+        session = ipmi.call_args.kwargs['session']
+        self.assertEqual(session.priv_level, pyipmi.Session.PRIV_LEVEL_OPERATOR)
+
+    def test_cipher_suite_needs_rmcp_plus(self):
+        with self.assertRaisesRegex(RuntimeError, 'needs the rmcpplus'):
+            self.lib.open_ipmi_lan_connection('host', '0x20', cipher_suite=3)
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
     def test_rmcp_connection_returns_index(self, create_interface, _):
         self.assertEqual(self.lib.open_ipmi_rmcp_connection('host', '0x20'),
                 1)

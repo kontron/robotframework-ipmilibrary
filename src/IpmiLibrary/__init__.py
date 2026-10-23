@@ -153,14 +153,40 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
                 password, routing_information, port, interface_type='rmcp', alias=alias,
                 max_retries=max_retries)
 
+    def open_ipmi_rmcp_plus_connection(self, host, target_address, user='',
+            password='', routing_information=None, port=623, alias=None,
+            max_retries=None, cipher_suite=None, privilege_level=None):
+        """Opens an IPMI v2.0 (RMCP+) session over LAN, like `ipmitool -I lanplus`.
+
+        `cipher_suite` is the cipher suite ID (1, 2, 3, 15, 16 or 17); by
+        default 17 and then 3 are tried. `privilege_level` is the requested
+        maximum privilege level of the session, `user`, `operator` or
+        `administrator` (default). The other arguments are those of
+        `Open IPMI LAN Connection`.
+
+        Example:
+        | Open IPMI RMCP Plus Connection | 10.0.0.1 | 0x20 | ADMIN | secret | |
+        | Open IPMI RMCP Plus Connection | 10.0.0.1 | 0x20 | ADMIN | secret | cipher_suite=3 |
+        """
+        return self.open_ipmi_lan_connection(host, target_address, user,
+                password, routing_information, port, interface_type='rmcpplus',
+                alias=alias, max_retries=max_retries, cipher_suite=cipher_suite,
+                privilege_level=privilege_level)
+
     def open_ipmi_lan_connection(self, host, target_address, user='', password='',
             routing_information=None, port=623, interface_type='rmcp',
-            alias=None, max_retries=None):
+            alias=None, max_retries=None, cipher_suite=None,
+            privilege_level=None):
         """Opens a LAN connection to an IPMI shelf manager.
 
         `host` is the IP or hostname of the shelf manager. `target_address` the
         IPMI address to which the command should be sent. `user` and `password`
         are used to authenticate against the shelf manager.
+
+        `cipher_suite` is only used by the `rmcpplus` interface, see
+        `Open IPMI RMCP Plus Connection`. `privilege_level` is the privilege
+        level of the session, `user`, `operator` or `administrator`
+        (default).
         """
 
         host = str(host)
@@ -176,11 +202,18 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
                 kwargs['retries'] = int_any_base(max_retries)
             else:
                 kwargs['max_retries'] = int_any_base(max_retries)
+        if cipher_suite is not None:
+            if interface_type != 'rmcpplus':
+                raise RuntimeError('a cipher suite needs the rmcpplus '
+                                   'interface, not %s' % interface_type)
+            kwargs['cipher_suite'] = int_any_base(cipher_suite)
         interface = pyipmi.interfaces.create_interface(interface_type,
                                                        **kwargs)
         session = pyipmi.Session()
         session.set_session_type_rmcp(host, port)
         session.set_auth_type_user(user, password)
+        if privilege_level is not None:
+            session.set_priv_level(str(privilege_level))
 
         target = pyipmi.Target(target_address, routing_information)
 
