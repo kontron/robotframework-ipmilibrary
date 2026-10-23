@@ -348,8 +348,22 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         return list(rsp)
 
     def send_ipmi_message(self, message, expected_cc=0x00):
-        expected_cc = int_any_base(expected_cc)
+        """Sends a message request and returns the response.
+
+        Fails if the completion code of the response is not `expected_cc`.
+        With `expected_cc` set to `None` the completion code is not checked,
+        it is in the `completion_code` attribute of the response.
+
+        Example:
+        | ${rsp}= | Send IPMI Message | ${req} | | |
+        | ${rsp}= | Send IPMI Message | ${req} | expected_cc=0xc1 | |
+        | ${rsp}= | Send IPMI Message | ${req} | expected_cc=${None} | |
+        | Should Not Be Equal As Integers | ${rsp.completion_code} | 0xc1 | | |
+        """
         rsp = self._ipmi.send_message(message)
+        if expected_cc is None:
+            return rsp
+        expected_cc = int_any_base(expected_cc)
         cc = rsp.completion_code
         msg = 'Command returned with return completion code 0x%02x, ' \
             'but should be 0x%02x' % (cc, expected_cc)

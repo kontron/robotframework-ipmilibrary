@@ -129,6 +129,37 @@ class TestRaw(LibraryTestCase):
                 raw_bytes=b'\x01')
 
 
+class TestMessage(LibraryTestCase):
+    def test_create_message_request(self):
+        req = self.lib.create_message_request('GetDeviceId')
+        self.assertIsInstance(req, pyipmi.msgs.bmc.GetDeviceIdReq)
+
+    def _response(self, cc):
+        rsp = pyipmi.msgs.create_response_by_name('GetSelTime')
+        rsp.completion_code = cc
+        self.ipmi.send_message.return_value = rsp
+        return rsp
+
+    def test_send_ipmi_message(self):
+        rsp = self._response(0x00)
+        req = self.lib.create_message_request('GetSelTime')
+        self.assertIs(self.lib.send_ipmi_message(req), rsp)
+        self.ipmi.send_message.assert_called_once_with(req)
+
+    def test_send_ipmi_message_expected_cc(self):
+        self._response(0xc1)
+        req = self.lib.create_message_request('GetSelTime')
+        self.lib.send_ipmi_message(req, expected_cc='0xc1')
+        with self.assertRaisesRegex(AssertionError, '0xc1, but should be 0x00'):
+            self.lib.send_ipmi_message(req)
+
+    def test_send_ipmi_message_without_cc_check(self):
+        rsp = self._response(0xc1)
+        req = self.lib.create_message_request('GetSelTime')
+        self.assertIs(self.lib.send_ipmi_message(req, expected_cc=None), rsp)
+        self.assertEqual(rsp.completion_code, 0xc1)
+
+
 class TestLan(LibraryTestCase):
     def test_get_ip_address(self):
         self.ipmi.get_lan_config_param.return_value = \
