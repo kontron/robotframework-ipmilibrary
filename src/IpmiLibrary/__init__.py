@@ -428,6 +428,20 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             setattr(obj, path[-1], value)
         return message
 
+    def encode_message(self, message):
+        """Returns the encoded data of a message as a list of integers.
+
+        For a request these are the request data bytes, without the network
+        function and the command; with `Send Raw Command` the data can be
+        sent modified, e.g. shortened.
+
+        Example:
+        | ${req}= | Create Message Request | GetSelEntry | |
+        | ${data}= | Encode Message | ${req} | |
+        | ${rsp}= | Send Raw Command | ${req.netfn} | ${req.cmdid} | @{data}[:-1] |
+        """
+        return list(pyipmi.msgs.encode_message(message))
+
     def _warn(self, msg):
         self._log(msg, 'WARN')
 

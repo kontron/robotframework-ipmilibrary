@@ -170,6 +170,14 @@ class TestMessage(LibraryTestCase):
             self.lib.create_message_request('ChassisControl',
                                             **{'control.optoin': 1})
 
+    def test_encode_message(self):
+        req = self.lib.create_message_request('GetSelEntry',
+                                              record_id='0x1234', length=16)
+        self.assertEqual(self.lib.encode_message(req),
+                         [0x00, 0x00, 0x34, 0x12, 0x00, 0x10])
+        req = self.lib.create_message_request('GetDeviceId')
+        self.assertEqual(self.lib.encode_message(req), [])
+
     def _response(self, cc):
         rsp = pyipmi.msgs.create_response_by_name('GetSelTime')
         rsp.completion_code = cc
