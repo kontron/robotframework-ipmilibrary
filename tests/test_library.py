@@ -194,8 +194,23 @@ class TestMessage(LibraryTestCase):
         self._response(0xc1)
         req = self.lib.create_message_request('GetSelTime')
         self.lib.send_ipmi_message(req, expected_cc='0xc1')
-        with self.assertRaisesRegex(AssertionError, '0xc1, but should be 0x00'):
+        with self.assertRaisesRegex(
+                AssertionError, r'0xc1 \(Invalid Command\), but should be '
+                                r'0x00 \(Command Completed Normally\)'):
             self.lib.send_ipmi_message(req)
+
+    def test_completion_code_description(self):
+        self.assertEqual(self.lib.completion_code_description('0xc7'),
+                         'Request data length invalid')
+        self.assertEqual(self.lib.completion_code_description(0x80),
+                         'Unknown error description')
+        name = 'GetLanConfigurationParameters'
+        req = pyipmi.msgs.create_request_by_name(name)
+        rsp = pyipmi.msgs.create_response_by_name(name)
+        for message in (req, rsp):
+            self.assertEqual(
+                self.lib.completion_code_description(0x80, message),
+                'parameter not supported.')
 
     def test_send_ipmi_message_without_cc_check(self):
         rsp = self._response(0xc1)

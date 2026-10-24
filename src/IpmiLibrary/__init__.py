@@ -28,6 +28,7 @@ import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
 import pyipmi.msgs
+from pyipmi.errors import CompletionCodeError
 from pyipmi.errors import IpmiTimeoutError
 
 from .utils import int_any_base
@@ -398,10 +399,31 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             return rsp
         expected_cc = int_any_base(expected_cc)
         cc = rsp.completion_code
-        msg = 'Command returned with return completion code 0x%02x, ' \
-            'but should be 0x%02x' % (cc, expected_cc)
+        msg = 'Command returned with return completion code 0x%02x (%s), ' \
+            'but should be 0x%02x (%s)' % (
+                cc, self.completion_code_description(cc, message),
+                expected_cc,
+                self.completion_code_description(expected_cc, message))
         asserts.assert_equal(expected_cc, cc, msg, values=False)
         return rsp
+
+    def completion_code_description(self, cc, message=None):
+        """Returns the description of the completion code `cc`.
+
+        The command specific completion codes (80h to BEh) are described if
+        `message`, a request or response, gives the command. An unknown
+        completion code is described as `Unknown error description`.
+
+        Example:
+        | ${desc}= | Completion Code Description | 0xc7 | |
+        | ${desc}= | Completion Code Description | ${rsp}[0] | ${req} |
+        """
+        cc = int_any_base(cc)
+        if message is None:
+            return CompletionCodeError.find_cc_desc(cc)
+        # the command specific codes are listed for the request NetFn
+        return CompletionCodeError.find_cc_desc(
+            cc, message.cmdid, message.netfn & ~1, message.group_extension)
 
     def create_message_request(self, name, **fields):
         """Creates the python-ipmi request message `name` and returns it.
