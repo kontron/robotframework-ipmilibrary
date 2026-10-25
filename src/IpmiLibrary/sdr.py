@@ -141,6 +141,24 @@ class Sdr:
         self._cp['prefetched_sdr_list'] = self._sdr_list
         self._info('Prefetching SDR list')
 
+    def get_sdr_list(self):
+        """Returns the list of SDR objects.
+
+        The list is the prefetched one, see `Prefetch SDR List`, or is read
+        from the SDR source, see `Set SDR Source`. A sensor record has the
+        attributes of python-ipmi, e.g. `device_id_string`, `number`,
+        `sensor_type_code` and `event_reading_type_code`.
+        """
+        return list(self._sdr_list)
+
+    def get_device_sdr_info(self):
+        """Returns the information of Get Device SDR Info.
+
+        The returned object has the attributes `count`, the number of
+        sensors, `luns_with_sensors` and `dynamic_population`.
+        """
+        return self._ipmi.get_device_sdr_info()
+
     def log_sdr_list(self):
         print('*INFO* SDR list')
         for sdr in self._sdr_list:

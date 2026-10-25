@@ -282,6 +282,12 @@ class TestSdr(LibraryTestCase):
         with self.assertRaisesRegex(AssertionError, 'No SDR selected'):
             self.lib.selected_sdr_name_should_be_equal('CPU Temp')
 
+    def test_get_sdr_list_returns_a_copy(self):
+        sdrs = self.lib.get_sdr_list()
+        self.assertEqual(sdrs, [self.sdr])
+        sdrs.clear()
+        self.assertEqual(self.lib.get_sdr_list(), [self.sdr])
+
     def test_select_sdr_by_unknown_record_type(self):
         with self.assertRaises(AssertionError):
             self.lib.select_sdr_by_record_type('Full Sensor Record')
