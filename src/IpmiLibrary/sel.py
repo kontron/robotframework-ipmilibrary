@@ -113,6 +113,16 @@ class Sel:
         reservation = self._ipmi.get_sel_reservation_id()
         self._ipmi.delete_sel_entry(int_any_base(record_id), reservation)
 
+    def get_sel_entries(self):
+        """Reads the SEL and returns the list of its entries.
+
+        The entries are python-ipmi `SelEntry` objects with the attributes
+        `record_id`, `type`, `timestamp`, `generator_id`, `evm_rev`,
+        `sensor_type`, `sensor_number`, `event_type`, `event_direction` and
+        `event_data`.
+        """
+        return self._ipmi.get_sel_entries()
+
     def get_sel_time(self):
         """Returns the time of the SEL clock in seconds since 1970-01-01."""
         return self._ipmi.get_sel_time()
@@ -509,6 +519,11 @@ class Sel:
         ipmb_i2c_addr = int_any_base(ipmb_i2c_addr)
         lun = int_any_base(lun)
         self._ipmi.set_event_receiver(ipmb_i2c_addr, lun)
+
+    def disable_event_message_generation(self):
+        """Disables the event messages of the controller by setting the
+        event receiver address FFh."""
+        self._ipmi.disable_event_message_generation()
 
     def get_event_receiver(self):
         """

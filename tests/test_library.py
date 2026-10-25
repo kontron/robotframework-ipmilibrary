@@ -321,6 +321,14 @@ class TestSel(LibraryTestCase):
         self.lib.delete_sel_entry('0x10')
         self.ipmi.delete_sel_entry.assert_called_once_with(0x10, 0x1234)
 
+    def test_get_sel_entries(self):
+        self.ipmi.get_sel_entries.return_value = ['entry']
+        self.assertEqual(self.lib.get_sel_entries(), ['entry'])
+
+    def test_disable_event_message_generation(self):
+        self.lib.disable_event_message_generation()
+        self.ipmi.disable_event_message_generation.assert_called_once_with()
+
 
 class TestFru(LibraryTestCase):
     def test_read_fru_data(self):
