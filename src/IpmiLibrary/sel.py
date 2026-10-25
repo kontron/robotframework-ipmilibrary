@@ -70,6 +70,53 @@ class Sel:
         """Returns the number of entries in SEL."""
         return self._ipmi.get_sel_entries_count()
 
+    def get_sel_info(self):
+        """Returns the SEL information of the Get SEL Info command.
+
+        The returned object has the attributes `version`, `entries`,
+        `free_bytes`, `most_recent_addition`, `most_recent_erase` and
+        `operation_support`, the list of the set operation support bits
+        (`get_sel_allocation_info`, `reserve_sel`, `partial_add_sel_entry`,
+        `delete_sel` and `overflow_flag`).
+        """
+        return self._ipmi.get_sel_info()
+
+    def get_sel_allocation_info(self):
+        """Returns the SEL allocation information.
+
+        The returned object has the attributes `possible_alloc_units`,
+        `alloc_unit_size`, `free_alloc_units`, `largest_free_block` and
+        `max_record_size`.
+        """
+        return self._ipmi.get_sel_allocation_info()
+
+    def add_sel_entry(self, *record_data):
+        """Adds an entry to the SEL and returns its record ID.
+
+        `record_data` are the 16 bytes of the record; the controller
+        replaces the record ID and, for a timestamped record, the
+        timestamp.
+
+        Example:
+        | ${id}= | Add SEL Entry | 0 | 0 | 0x02 | 0 | 0 | 0 | 0 | 0x41 | 0 | 0x04 | 0xc0 | 1 | 0x6f | 0 | 0xff | 0xff |
+        """
+        self._invalidate_prefetched_sel_records()
+        record_data = [int_any_base(d) for d in record_data]
+        return self._ipmi.add_sel_entry(record_data)
+
+    def delete_sel_entry(self, record_id):
+        """Deletes the SEL entry with the given record ID.
+
+        The SEL is reserved first.
+        """
+        self._invalidate_prefetched_sel_records()
+        reservation = self._ipmi.get_sel_reservation_id()
+        self._ipmi.delete_sel_entry(int_any_base(record_id), reservation)
+
+    def get_sel_time(self):
+        """Returns the time of the SEL clock in seconds since 1970-01-01."""
+        return self._ipmi.get_sel_time()
+
     def log_sel(self):
         """Dumps the sensor event log and logs it."""
 

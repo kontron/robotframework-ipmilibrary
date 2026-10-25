@@ -302,6 +302,19 @@ class TestSel(LibraryTestCase):
         with self.assertRaises(AssertionError):
             self.lib.select_sel_record_by_record_id(2)
 
+    def test_add_sel_entry(self):
+        self.lib._cp['prefetched_sel_records'] = []
+        self.ipmi.add_sel_entry.return_value = 7
+        record = ['0x02'] + ['0'] * 15
+        self.assertEqual(self.lib.add_sel_entry(*record), 7)
+        self.ipmi.add_sel_entry.assert_called_once_with([2] + [0] * 15)
+        self.assertNotIn('prefetched_sel_records', self.lib._cp)
+
+    def test_delete_sel_entry_reserves_the_sel(self):
+        self.ipmi.get_sel_reservation_id.return_value = 0x1234
+        self.lib.delete_sel_entry('0x10')
+        self.ipmi.delete_sel_entry.assert_called_once_with(0x10, 0x1234)
+
 
 class TestFru(LibraryTestCase):
     def test_read_fru_data(self):
