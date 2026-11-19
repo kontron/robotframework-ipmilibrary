@@ -268,6 +268,35 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
         return self._cache.register(connection, alias)
 
+    def open_ipmi_kcm_connection(self, port, target_address, channel=0,
+        slave_address=0x20, routing_information=None, alias=None):
+        """Opens a connection to the IPMB over a KCM.
+        `port` is the serial port of the KCM, a device path or a pyserial
+        URL. `target_address` is the IPMB address to which the command should
+        be sent. `channel` selects the IPMB of the KCM, 0 for IPMB-A and 1
+        for IPMB-B.
+        """
+        target_address = int_any_base(target_address)
+        slave_address = int_any_base(slave_address)
+        channel = int_any_base(channel)
+
+        self._info('Opening KCM on %s, channel %d' % (port, channel))
+
+        interface = pyipmi.interfaces.create_interface('kcm',
+                slave_address=slave_address, port=port, channel=channel)
+        target = pyipmi.Target(target_address, routing_information)
+
+        self._info('Opening IPMI KCM connection to %02Xh' % target_address)
+
+        ipmi = pyipmi.Ipmi(interface=interface, target=target)
+        self._open_ipmi(ipmi)
+
+        connection = IpmiConnection(ipmi, target)
+
+        self._active_connection = connection
+
+        return self._cache.register(connection, alias)
+
     @staticmethod
     def _open_ipmi(ipmi):
         try:

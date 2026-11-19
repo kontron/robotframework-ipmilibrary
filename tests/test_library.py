@@ -111,6 +111,14 @@ class TestConnection(LibraryTestCase):
         session = ipmi.call_args.kwargs['session']
         self.assertEqual(session.priv_level, pyipmi.Session.PRIV_LEVEL_OPERATOR)
 
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_kcm_connection(self, create_interface, ipmi):
+        self.lib.open_ipmi_kcm_connection('/dev/ttyUSB0', '0x8c', channel='1')
+        create_interface.assert_called_with('kcm', slave_address=0x20,
+                port='/dev/ttyUSB0', channel=1)
+        self.assertEqual(ipmi.call_args.kwargs['target'].ipmb_address, 0x8c)
+
     def test_cipher_suite_needs_rmcp_plus(self):
         with self.assertRaisesRegex(RuntimeError, 'needs the rmcpplus'):
             self.lib.open_ipmi_lan_connection('host', '0x20', cipher_suite=3)
