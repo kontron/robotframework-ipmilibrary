@@ -119,6 +119,25 @@ class TestConnection(LibraryTestCase):
                 port='/dev/ttyUSB0', channel=1)
         self.assertEqual(ipmi.call_args.kwargs['target'].ipmb_address, 0x8c)
 
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_ipmidev_connection(self, create_interface, ipmi):
+        self.assertEqual(self.lib.open_ipmi_ipmidev_connection(), 1)
+        create_interface.assert_called_once_with('ipmidev',
+                                                 port='/dev/ipmi0')
+        self.assertEqual(ipmi.call_args.kwargs['target'].ipmb_address, 0x20)
+        ipmi.return_value.open.assert_called_once()
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_ipmidev_connection_options(self, create_interface, ipmi):
+        self.lib.open_ipmi_ipmidev_connection('/dev/ipmi1', '0x86',
+                                              timeout='2 s')
+        create_interface.assert_called_once_with('ipmidev',
+                                                 port='/dev/ipmi1',
+                                                 timeout=2.0)
+        self.assertEqual(ipmi.call_args.kwargs['target'].ipmb_address, 0x86)
+
     def test_cipher_suite_needs_rmcp_plus(self):
         with self.assertRaisesRegex(RuntimeError, 'needs the rmcpplus'):
             self.lib.open_ipmi_lan_connection('host', '0x20', cipher_suite=3)

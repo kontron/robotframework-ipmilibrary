@@ -297,6 +297,44 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
 
         return self._cache.register(connection, alias)
 
+    def open_ipmi_ipmidev_connection(self, device='/dev/ipmi0',
+            target_address=0x20, routing_information=None, alias=None,
+            timeout=None):
+        """Opens a connection through the Linux IPMI driver.
+
+        The requests are sent with the ioctls of the ipmi_devintf driver
+        on the character device `device`, i.e. over the system interface
+        (e.g. KCS) of the controller of the host the tests run on.
+        `target_address` 0x20 (default) is that controller itself; another
+        IPMB address is reached by the driver bridging the request to the
+        IPMB. `timeout` is the time to wait for a response, in Robot
+        Framework's time format; the default is that of the interface.
+
+        Example:
+        | Open IPMI Ipmidev Connection | | |
+        | Open IPMI Ipmidev Connection | /dev/ipmi1 | 0x20 |
+        """
+        device = str(device)
+        target_address = int_any_base(target_address)
+
+        kwargs = {'port': device}
+        if timeout is not None:
+            kwargs['timeout'] = robottime.timestr_to_secs(timeout)
+        interface = pyipmi.interfaces.create_interface('ipmidev', **kwargs)
+        target = pyipmi.Target(target_address, routing_information)
+
+        self._info('Opening IPMI connection through %s to %02Xh'
+                   % (device, target_address))
+
+        ipmi = pyipmi.Ipmi(interface=interface, target=target)
+        self._open_ipmi(ipmi)
+
+        connection = IpmiConnection(ipmi, target)
+
+        self._active_connection = connection
+
+        return self._cache.register(connection, alias)
+
     @staticmethod
     def _open_ipmi(ipmi):
         try:
