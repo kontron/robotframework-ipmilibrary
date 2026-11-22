@@ -430,6 +430,30 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         | Send Raw Command | lun=3 | 0x3e | 0x62 | ... | # LUN other than zero
         """
 
+        lun, netfn, raw = self._parse_raw_command(data)
+        rsp = self._ipmi.send_raw(lun, netfn=netfn, raw_bytes=raw)
+
+        # rsp is a byte string .. convert to list
+        return list(rsp)
+
+    def send_raw_broadcast_command(self, *data):
+        """Sends a raw IPMI command as IPMB broadcast.
+
+        The request is prefixed with the broadcast address 00h (IPMI 2.0
+        section 20.9), like Broadcast Get Device ID; the response is
+        expected from the target of the connection. Only an IPMB
+        connection (e.g. `Open IPMI Aardvark Connection`) can broadcast.
+        The arguments are the ones of `Send Raw Command`.
+
+        Example:
+        | ${rsp}= | Send Raw Broadcast Command | 0x06 | 0x01 | # Broadcast Get Device ID |
+        """
+        lun, netfn, raw = self._parse_raw_command(data)
+        rsp = self._ipmi.send_raw_broadcast(lun, netfn=netfn, raw_bytes=raw)
+        return list(rsp)
+
+    @staticmethod
+    def _parse_raw_command(data):
         if len(data) > 0 and isinstance(data[0], list):
             data = data[0]
 
@@ -442,11 +466,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
             raise RuntimeError('netfn and/or cmdid missing')
 
         data = [int_any_base(b) for b in data]
-        raw = bytes(data[1:])
-        rsp = self._ipmi.send_raw(lun, netfn=data[0], raw_bytes=raw)
-
-        # rsp is a byte string .. convert to list
-        return list(rsp)
+        return lun, data[0], bytes(data[1:])
 
     def send_ipmi_message(self, message, expected_cc=0x00):
         """Sends a message request and returns the response.

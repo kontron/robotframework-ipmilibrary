@@ -168,6 +168,14 @@ class TestRaw(LibraryTestCase):
         self.ipmi.send_raw.assert_called_once_with(0, netfn=6,
                 raw_bytes=b'\x01')
 
+    def test_send_raw_broadcast_command(self):
+        self.ipmi.send_raw_broadcast.return_value = b'\x00\x20'
+        self.assertEqual(
+                self.lib.send_raw_broadcast_command('0x06', '0x01'),
+                [0, 0x20])
+        self.ipmi.send_raw_broadcast.assert_called_once_with(0, netfn=6,
+                raw_bytes=b'\x01')
+
     def test_send_raw_command_without_arguments(self):
         with self.assertRaisesRegex(RuntimeError, 'netfn'):
             self.lib.send_raw_command()
