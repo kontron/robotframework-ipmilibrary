@@ -19,6 +19,7 @@ from subprocess import Popen, PIPE
 
 from robot.utils import robottime
 from robot.utils import asserts
+from robot.utils import is_truthy
 from robot.utils.connectioncache import ConnectionCache
 from robot.output import LOGGER
 from robot.output.loggerhelper import Message
@@ -27,6 +28,7 @@ import robot.version
 import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
+import pyipmi.interfaces.router
 import pyipmi.msgs
 from pyipmi.errors import CompletionCodeError
 from pyipmi.errors import IpmiTimeoutError
@@ -75,9 +77,10 @@ class RobotLogHandler(logging.Handler):
 
 
 class IpmiConnection():
-    def __init__(self, ipmi, target):
+    def __init__(self, ipmi, target, router=None):
         self._ipmi = ipmi
         self._target = target
+        self._router = router
         self._properties = {}
         self._sel_records = []
         self._selected_sel_record = None
@@ -95,6 +98,8 @@ class IpmiConnection():
             return
         self._closed = True
         self._ipmi.close()
+        if self._router is not None:
+            self._router.close()
 
 
 class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
@@ -269,21 +274,46 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         return self._cache.register(connection, alias)
 
     def open_ipmi_kcm_connection(self, port, target_address, channel=0,
-        slave_address=0x20, routing_information=None, alias=None):
+        slave_address=0x20, routing_information=None, alias=None,
+        i2c_speed=None, acknowledge_events=False):
         """Opens a connection to the IPMB over a KCM.
         `port` is the serial port of the KCM, a device path or a pyserial
         URL. `target_address` is the IPMB address to which the command should
         be sent. `channel` selects the IPMB of the KCM, 0 for IPMB-A and 1
-        for IPMB-B.
+        for IPMB-B, or `ab` for both: the messages are then sent alternately
+        on IPMB-A and IPMB-B, as VITA 46.11 requires, and the responses are
+        accepted on both. See `Disable KCM Channel` and `Get KCM Received
+        Channels`. `i2c_speed` is the I2C bit rate of the channels in Hz,
+        100000 if not given; see also `Set KCM I2C Speed`.
+
+        With `acknowledge_events` set to true, the connection answers the
+        Platform Event requests sent to its `slave_address`, e.g. 20h, the
+        event receiver of a VITA 46.11 chassis, with Completion Code 00h,
+        like an event receiver. Otherwise they are not answered and the
+        controllers repeat them. Other requests are never answered.
         """
         target_address = int_any_base(target_address)
         slave_address = int_any_base(slave_address)
-        channel = int_any_base(channel)
+        if str(channel).lower() == 'ab':
+            channel = 'ab'
+        else:
+            channel = int_any_base(channel)
 
-        self._info('Opening KCM on %s, channel %d' % (port, channel))
+        self._info('Opening KCM on %s, channel %s' % (port, channel))
 
+        kwargs = {}
+        if i2c_speed is not None:
+            kwargs['i2c_speed'] = int_any_base(i2c_speed)
+        router = None
+        if is_truthy(acknowledge_events):
+            router = pyipmi.interfaces.router.MessageRouter(unhandled_cc=None)
+            router.register_raw_handler(pyipmi.msgs.constants.NETFN_SENSOR_EVENT,
+                    pyipmi.msgs.constants.CMDID_PLATFORM_EVENT,
+                    lambda interface, header, data: b'\x00')
+            kwargs['router'] = router
         interface = pyipmi.interfaces.create_interface('kcm',
-                slave_address=slave_address, port=port, channel=channel)
+                slave_address=slave_address, port=port, channel=channel,
+                **kwargs)
         target = pyipmi.Target(target_address, routing_information)
 
         self._info('Opening IPMI KCM connection to %02Xh' % target_address)
@@ -291,7 +321,7 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         ipmi = pyipmi.Ipmi(interface=interface, target=target)
         self._open_ipmi(ipmi)
 
-        connection = IpmiConnection(ipmi, target)
+        connection = IpmiConnection(ipmi, target, router)
 
         self._active_connection = connection
 
@@ -334,6 +364,109 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         self._active_connection = connection
 
         return self._cache.register(connection, alias)
+
+    def _kcm_interface(self):
+        interface = self._ipmi.interface
+        if not isinstance(interface, pyipmi.interfaces.Kcm):
+            raise RuntimeError('the active connection is not a KCM '
+                               'connection, see Open IPMI KCM Connection')
+        return interface
+
+    @staticmethod
+    def _kcm_channel(channel):
+        name = str(channel).upper()
+        if name in ('A', 'B'):
+            return 'AB'.index(name)
+        return int_any_base(channel)
+
+    def disable_kcm_channel(self, channel):
+        """Disables a channel of the active KCM connection.
+
+        `channel` is 0 or `A` for IPMB-A, 1 or `B` for IPMB-B, one of the
+        channels the connection uses. Nothing is sent on the channel any
+        more, and the KCM acknowledges no message on it, so an IPMC that
+        sends a message on this IPMB sees a failed transmission, as if the
+        IPMB had failed. Use it with a connection on both IPMBs (channel
+        `ab`) to simulate a failed IPMB. `Close IPMI Connection` enables
+        the channel again.
+
+        Example:
+        | Open IPMI KCM Connection | /dev/ttyUSB0 | 0x82 | channel=ab |
+        | Disable KCM Channel | B |
+        | Send Raw Command | 0x06 | 0x01 | # sent and answered on IPMB-A |
+        | Enable KCM Channel | B |
+        """
+        channel = self._kcm_channel(channel)
+        self._info('Disabling KCM channel %d' % channel)
+        self._kcm_interface().disable_channel(channel)
+
+    def enable_kcm_channel(self, channel):
+        """Enables a channel disabled by `Disable KCM Channel` again.
+
+        `channel` is 0 or `A` for IPMB-A, 1 or `B` for IPMB-B.
+        """
+        channel = self._kcm_channel(channel)
+        self._info('Enabling KCM channel %d' % channel)
+        self._kcm_interface().enable_channel(channel)
+
+    def set_kcm_i2c_speed(self, speed, channel=None):
+        """Sets the I2C bit rate of a channel of the active KCM connection.
+
+        `speed` is the bit rate in Hz, e.g. 400000 for the FAST-MODE of
+        VITA 46.11. `channel` is 0 or `A` for IPMB-A, 1 or `B` for IPMB-B;
+        without it the bit rate of all channels of the connection is set.
+        The old bit rate of the channel, or of the first channel of the
+        connection, is returned.
+
+        Example:
+        | ${old}= | Set KCM I2C Speed | 400000 | channel=B |
+        | Set KCM I2C Speed | ${old} | channel=B |
+        """
+        interface = self._kcm_interface()
+        speed = int_any_base(speed)
+        if channel is None:
+            old = interface.get_i2c_speed(interface.channels[0])
+        else:
+            channel = self._kcm_channel(channel)
+            old = interface.get_i2c_speed(channel)
+        self._info('Setting the I2C bit rate of KCM channel %s to %d Hz'
+                   % ('all' if channel is None else channel, speed))
+        interface.set_i2c_speed(speed, channel)
+        return old
+
+    def get_kcm_received_channels(self):
+        """Returns the channels of the messages the active KCM connection
+        received, oldest first: 0 for IPMB-A, 1 for IPMB-B.
+
+        All received messages are listed, responses and requests, also
+        those received on a disabled channel, since the connection was
+        opened or `Clear KCM Received Channels` was called.
+
+        Example:
+        | Clear KCM Received Channels |
+        | Send Raw Command | 0x06 | 0x01 |
+        | Send Raw Command | 0x06 | 0x01 |
+        | ${channels}= | Get KCM Received Channels |
+        | Should Be Equal | ${channels} | ${{ [0, 1] }} |
+        """
+        return self._kcm_interface().received_channels()
+
+    def get_kcm_received_messages(self):
+        """Returns the messages the active KCM connection received, oldest
+        first, as a list of the channel (0 for IPMB-A, 1 for IPMB-B) and
+        the IPMB message, a list of bytes starting with the address it was
+        sent to.
+
+        The same messages as `Get KCM Received Channels`.
+        """
+        return [(channel, list(message)) for channel, message
+                in self._kcm_interface().received_messages()]
+
+    def clear_kcm_received_channels(self):
+        """Forgets the channels of the messages the active KCM connection
+        received so far, see `Get KCM Received Channels`.
+        """
+        self._kcm_interface().clear_received_channels()
 
     @staticmethod
     def _open_ipmi(ipmi):

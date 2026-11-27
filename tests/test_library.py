@@ -121,6 +121,100 @@ class TestConnection(LibraryTestCase):
 
     @mock.patch('pyipmi.Ipmi')
     @mock.patch('pyipmi.interfaces.create_interface')
+    def test_kcm_connection_both_channels(self, create_interface, ipmi):
+        self.lib.open_ipmi_kcm_connection('/dev/ttyUSB0', '0x8c', channel='AB')
+        create_interface.assert_called_with('kcm', slave_address=0x20,
+                port='/dev/ttyUSB0', channel='ab')
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_kcm_connection_acknowledges_events(self, create_interface, ipmi):
+        self.lib.open_ipmi_kcm_connection('/dev/ttyUSB0', '0x8c',
+                                          channel='ab',
+                                          acknowledge_events='True')
+        router = create_interface.call_args.kwargs['router']
+        # a Platform Event from 82h to 20h is answered with 00h
+        hdr = bytes((0x20, 0x04 << 2))
+        body = bytes((0x82, 0x08, 0x02, 0x04, 0xc0, 0x01, 0x6f, 0x01))
+        frame = (hdr + bytes((-sum(hdr) & 0xff,)) + body
+                 + bytes((-sum(body) & 0xff,)))
+        rsp = router.answer_request(frame)
+        self.assertEqual(rsp[0], 0x82)
+        self.assertEqual(rsp[1] >> 2, 0x05)
+        self.assertEqual(rsp[5:7], bytes((0x02, 0x00)))
+        # other requests are not answered
+        hdr = bytes((0x20, 0x06 << 2))
+        body = bytes((0x82, 0x08, 0x01))
+        frame = (hdr + bytes((-sum(hdr) & 0xff,)) + body
+                 + bytes((-sum(body) & 0xff,)))
+        self.assertIsNone(router.answer_request(frame))
+        # the router is closed with the connection
+        with mock.patch.object(router, 'close') as close:
+            self.lib.close_all_ipmi_connections()
+        close.assert_called_once_with()
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_kcm_connection_ignores_events(self, create_interface, ipmi):
+        self.lib.open_ipmi_kcm_connection('/dev/ttyUSB0', '0x8c')
+        self.assertNotIn('router', create_interface.call_args.kwargs)
+
+    def _kcm_connection(self):
+        interface = mock.create_autospec(pyipmi.interfaces.Kcm,
+                                         instance=True)
+        ipmi = mock.Mock()
+        ipmi.interface = interface
+        self.lib._active_connection = IpmiConnection(ipmi,
+                                                     pyipmi.Target(0x82))
+        return interface
+
+    def test_disable_and_enable_kcm_channel(self):
+        interface = self._kcm_connection()
+        self.lib.disable_kcm_channel('B')
+        interface.disable_channel.assert_called_once_with(1)
+        self.lib.enable_kcm_channel('0')
+        interface.enable_channel.assert_called_once_with(0)
+        self.lib.disable_kcm_channel('a')
+        interface.disable_channel.assert_called_with(0)
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
+    def test_kcm_connection_i2c_speed(self, create_interface, ipmi):
+        self.lib.open_ipmi_kcm_connection('/dev/ttyUSB0', '0x8c',
+                                          i2c_speed='400000')
+        create_interface.assert_called_with('kcm', slave_address=0x20,
+                port='/dev/ttyUSB0', channel=0, i2c_speed=400000)
+
+    def test_set_kcm_i2c_speed(self):
+        interface = self._kcm_connection()
+        interface.channels = (0, 1)
+        interface.get_i2c_speed.return_value = 100000
+        self.assertEqual(self.lib.set_kcm_i2c_speed('400000', 'B'), 100000)
+        interface.get_i2c_speed.assert_called_with(1)
+        interface.set_i2c_speed.assert_called_with(400000, 1)
+        self.lib.set_kcm_i2c_speed(100000)
+        interface.set_i2c_speed.assert_called_with(100000, None)
+
+    def test_kcm_received_channels(self):
+        interface = self._kcm_connection()
+        interface.received_channels.return_value = [0, 1]
+        self.assertEqual(self.lib.get_kcm_received_channels(), [0, 1])
+        interface.received_messages.return_value = [(1, b'\x20\x1c')]
+        self.assertEqual(self.lib.get_kcm_received_messages(),
+                         [(1, [0x20, 0x1c])])
+        self.lib.clear_kcm_received_channels()
+        interface.clear_received_channels.assert_called_once_with()
+
+    def test_kcm_keyword_needs_kcm_connection(self):
+        ipmi = mock.Mock()
+        ipmi.interface = mock.Mock()
+        self.lib._active_connection = IpmiConnection(ipmi,
+                                                     pyipmi.Target(0x82))
+        with self.assertRaisesRegex(RuntimeError, 'not a KCM'):
+            self.lib.disable_kcm_channel('B')
+
+    @mock.patch('pyipmi.Ipmi')
+    @mock.patch('pyipmi.interfaces.create_interface')
     def test_ipmidev_connection(self, create_interface, ipmi):
         self.assertEqual(self.lib.open_ipmi_ipmidev_connection(), 1)
         create_interface.assert_called_once_with('ipmidev',
