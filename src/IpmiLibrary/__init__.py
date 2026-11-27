@@ -28,6 +28,7 @@ import robot.version
 import pyipmi
 import pyipmi.logger
 import pyipmi.interfaces
+import pyipmi.interfaces.ipmb
 import pyipmi.interfaces.router
 import pyipmi.msgs
 from pyipmi.errors import CompletionCodeError
@@ -432,6 +433,34 @@ class IpmiLibrary(Sdr, Sel, Fru, Bmc, Picmg, Hpm, Chassis, Lan):
         self._info('Setting the I2C bit rate of KCM channel %s to %d Hz'
                    % ('all' if channel is None else channel, speed))
         interface.set_i2c_speed(speed, channel)
+        return old
+
+    def set_ipmb_tries(self, tries):
+        """Sets how often the active IPMB connection (Aardvark, KCM) sends a
+        request until it gets the response, and returns the old number.
+
+        A request without a response is sent again, by default up to 3
+        times, so that a lost message does not fail the request. With 1
+        try a request fails as soon as the target does not answer, e.g. to
+        see that a controller is resetting: a reset shorter than the
+        retries would otherwise go unnoticed.
+
+        Example:
+        | ${old}= | Set IPMB Tries | 1 |
+        | Run Keyword And Return Status | Send Raw Command | 0x06 | 0x01 |
+        | Set IPMB Tries | ${old} |
+        """
+        interface = self._ipmi.interface
+        if not isinstance(interface, pyipmi.interfaces.ipmb.IpmbInterface):
+            raise RuntimeError('the active connection is not an IPMB '
+                               'connection, see Open IPMI KCM Connection '
+                               'and Open IPMI Aardvark Connection')
+        tries = int_any_base(tries)
+        if tries < 1:
+            raise ValueError('tries must be at least 1, not %d' % tries)
+        old = interface.max_retries
+        self._info('Sending IPMB requests up to %d times' % tries)
+        interface.max_retries = tries
         return old
 
     def get_kcm_received_channels(self):

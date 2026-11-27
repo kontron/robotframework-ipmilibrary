@@ -195,6 +195,19 @@ class TestConnection(LibraryTestCase):
         self.lib.set_kcm_i2c_speed(100000)
         interface.set_i2c_speed.assert_called_with(100000, None)
 
+    def test_set_ipmb_tries(self):
+        interface = self._kcm_connection()
+        interface.max_retries = 3
+        self.assertEqual(self.lib.set_ipmb_tries('1'), 3)
+        self.assertEqual(interface.max_retries, 1)
+        with self.assertRaises(ValueError):
+            self.lib.set_ipmb_tries(0)
+        self.assertEqual(interface.max_retries, 1)
+
+    def test_set_ipmb_tries_needs_ipmb_connection(self):
+        with self.assertRaisesRegex(RuntimeError, 'not an IPMB'):
+            self.lib.set_ipmb_tries(1)
+
     def test_kcm_received_channels(self):
         interface = self._kcm_connection()
         interface.received_channels.return_value = [0, 1]
